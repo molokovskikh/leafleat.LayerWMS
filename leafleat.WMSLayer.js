@@ -208,6 +208,120 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 	   this._getFeatureInfo(e.latlng);
     },
 
+	//Получить параметры преобразования элемента
+	_getTransform:function(el){		
+		if(L.Browser.any3d)
+		{		
+			var st = el.style[L.DomUtil.TRANSFORM];
+			if(!st) return;
+			
+			var	regexp = /^translate3d\s*\(\s*(\-*\d+)[^\,]*\,\s*(\-*\d+)[^\,]*\,\s*(\-*\d+)[^\)]*\)\s*(scale\s*\(\s*([\d\.]+)\s*(\,\s*([\d\.]+)\s*)*\))*$/i,
+				m = regexp.exec(st),
+				x = m[1],
+				y = m[2],
+				z = m[3],
+			    sx= m[5],
+				sy= m[7],
+				
+				t = L.Util.trim;
+				p=function(v) {return v&&typeof v==='string'?parseFloat(t(v)):0 },
+				
+				translate=x&&t(x).length>0
+					  ?{x:p(x),y:p(y),z:p(z)}
+					  :null,
+				
+				scale=sx&&t(sx).length>0
+						?sy&&t(sy).length==0?{x:p(sx)}:{x:p(sx),y:p(sy)}
+						:null,
+				transform=translate
+						  ?(scale?{translate:translate,scale:scale}:{translate:translate})
+						  :null;
+			return transform;
+		}
+	}, 
+	//Установить параметры преобразования элемента
+	_setTransform:function(el,transform)
+	{
+		if(L.Browser.any3d&&transform)
+		{
+			var t=transform.translate,s=transform.scale;
+			el.style[L.DomUtil.TRANSFORM] = L.Util.trim(
+				(t?'translate3d(' + t.x + 'px,' + t.y + 'px' + ','+t.z+'px)':'')
+			  + (s ? ' scale(' + s.x +(s.y?','+s.y:'')+ ')' : '')
+														);
+		}
+	},
+
+  //Расчет правильного размера на основе натурального и текущего
+  _calcCorrectSize:function(w,h,nw,nh)
+  {
+	  var k=h/w,  //Запомним пропорцию изображения
+	      kw=nw/w,//Вычислим отношение к оригиналу (ширина)
+		  kh=nh/h,//Вычислим отношение к оригиналу (высота)
+		  direct=kw>kh&&nw<nh,
+		  e=direct?nw:nh,
+		  i=direct?nh:nw,
+		  f=function(v){ return  Math.round( direct? v*k: v/k ) },
+		  r=function(a,b){ return { width:(direct?a:b),height:(direct?b:a) }},
+		  c = f(i);	
+	
+		  if(c<e)
+		  {			  
+			if(nw>nh)
+			{		
+			  debugger
+			  i=e;
+			  c=f(i);
+			}
+		  }
+			  
+ 		  for(;c>e;i--)
+		  {
+			c = f(i);
+			if(c<=0)
+			{
+				debugger
+				break;
+			}
+		  }
+		  return r(i,c);	
+  },
+	
+  //Проверка изображения на правильность натуральных размеров, по сравнению с тем что было запрошено
+  _imageValidCorrectSize:function(img)
+  {	
+		var h=parseInt(img.style['height']),
+			w=parseInt(img.style['width']),
+			nh=img.naturalHeight,
+			nw=img.naturalWidth;
+		if(!img._corrected_size && (nh<h||nw<w))
+		{
+			//Запомним ограничение wms-сервиса, по  размеру изображения
+			if(!this._wms_image_limitation)
+				this._wms_image_limitation = { width: nw,height: nh };
+			else
+				L.extend(this._wms_image_limitation,
+						{
+							width:  Math.max(nw,this._wms_image_limitation.width),
+							height: Math.max(nh,this._wms_image_limitation.height)
+						});
+			
+			img._corrected_size=this._calcCorrectSize(w,h,nw,nh);
+			
+			/*
+			var transform = this._getTransform(img)||{};
+			transform.scale={x:1+kw,y:1+kh};
+			this._setTransform(img,transform);			
+			*/
+			return false;
+		} else		
+			if(img._corrected_size)
+				img._corrected_size=null;
+		
+		return true;
+  },
+  
+  //Добавление изображения на визуальный слой
   _imageReady:function(img)
    {
 	   var pane = this.getPane();	   
@@ -216,7 +330,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		L.DomUtil.removeClass(this._image, 'leaflet-tile-loaded');
 		L.DomUtil.removeClass(this._image, 'leaflet-tile-loaded-error');
 		pane.removeChild(this._image);		
-		L.DomUtil.addClass(img, 'leaflet-tile-loaded');		
+		L.DomUtil.addClass(img, 'leaflet-tile-loaded');			
 		pane.appendChild(img);
 		this._image_prev = this._image;
 		this._image = img;
@@ -224,6 +338,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 	   }
    },
    
+   //Отмена загрузки изображения
    _abortLoadImage:function(img)
    {
 	 if(img.src&&img.src.length>0)
@@ -251,6 +366,14 @@ _update:function()
 		isLoading = typeof loading==='function',
 		loaded = function()
 		{ 			
+			//Проверка размеров полученного изображения
+		    if(!this._imageValidCorrectSize(newImg))
+			{
+				debugger
+				this._getMap(newImg);
+				return;
+			}
+			
 			if(isLoading) 	
 			{
 				loading.call(this,true);
@@ -287,13 +410,14 @@ _update:function()
 	this._getMap(newImg);		
 }
 ,
+
 	
 	_animateZoom: function (e) {
 		var topLeft = this._map._latLngToNewLayerPoint(this._bounds.getNorthWest(), e.zoom, e.center),
 		    size = this._map._latLngToNewLayerPoint(this._bounds.getSouthEast(), e.zoom, e.center).subtract(topLeft),
 		    offset = topLeft.add(size._multiplyBy((1 - 1 / e.scale) / 2));
 
-		///L.DomUtil.setTransform(this._image, offset, e.scale);
+		L.DomUtil.setTransform(this._image, offset, e.scale);
 	},
 	
  _ajax:function ajax(url,type,success,error) {
@@ -349,38 +473,31 @@ _update:function()
 	//Загрузка изображения,
 	_getMap:function(img,gutter)
 	{		  
-		var  pad = function(bufferRatio,bounds)
-			{
-				var heightBuffer = bounds.max.y - bounds.min.y;
-				widthBuffer = bounds.max.x - bounds.min.x;
-				return new L.Bounds([bounds.min.x-widthBuffer,bounds.min.y-heightBuffer],[bounds.max.x+widthBuffer,bounds.max.y+heightBuffer])
+		var  pad = function(r,b) {
+				var h = b.max.y - b.min.y,w = b.max.x - b.min.x;
+				return new L.Bounds([b.min.x-w,b.min.y-h],[b.max.x+w,b.max.y+h])
 			};
-			
+						
 		 var map = this._map,
 			 zoom=map.getZoom(),
 			 crs = this._crs,
-			 boundsPixelMap = map.getPixelBounds(),			
-			 boundsLatLng = map.getBounds().pad((gutter||this.options.gutter)/100),
-			 boundsLatLng = L.latLngBounds(map.wrapLatLng(boundsLatLng.getSouthWest()), map.wrapLatLng(boundsLatLng.getNorthEast())),
-			 //boundsPixel = new L.Bounds(map.project(boundsLatLng.getSouthWest()),map.project(boundsLatLng.getNorthEast())),		
-			 boundsPixel = new L.Bounds(map.latLngToLayerPoint(boundsLatLng.getNorthWest()),map.latLngToLayerPoint(boundsLatLng.getSouthEast()))			 
+			 boundsPixelMap = map.getPixelBounds(),	
+			 boundsPixel = pad((gutter||this.options.gutter)/100,boundsPixelMap),
+			 boundsLatLng = L.latLngBounds(map.wrapLatLng(map.unproject(boundsPixel.min)),map.wrapLatLng(map.unproject(boundsPixel.max))),			 
 			 se = crs.project(boundsLatLng.getSouthEast()),
 			 nw = crs.project(boundsLatLng.getNorthWest()),
-			 sizeWms=boundsPixel.getSize().round(),			
-			 mapPane = map.getPane('mapPane'),
-			 point = L.point(boundsPixel.min.x-boundsPixelMap.min.x,boundsPixel.min.y-boundsPixelMap.min.y).round(),
-			 offsetMap = L.DomUtil.getPosition(mapPane),
-			 pointImg = L.point(point.x,point.y);
+			 sizeWms= boundsPixel.getSize().round(),			
+			 posImg = boundsPixel.min.subtract(map.getPixelOrigin());
 			
 					
 			
 		//Границы области для загрузки с отступом
-		this._bounds = boundsLatLng;
-		
+		this._bounds = boundsLatLng;		
 		
 		//Установим положение изображения и его размер
-		this._updateImageRectangle(img,boundsPixel.min,sizeWms);	
-		debugger
+		this._updateImageRectangle(img,posImg,sizeWms);	
+
+		//Определим параметры запроса к WMS-сервису
 		var requestParams = L.extend({},		
 		this.defaultWmsParams,
 		this.defaultParamsGetMap,
@@ -390,6 +507,17 @@ _update:function()
 		}
 		);			
 
+		if(img._corrected_size)
+		{
+			L.extend(requestParams,img._corrected_size);
+		}
+		else		
+			if(this._wms_image_limitation) //Если уже знаем ограничение сервиса, то применим эти параметры сразу
+			{
+				debugger
+				img._corrected_size = this._calcCorrectSize(requestParams.width,requestParams.height,this._wms_image_limitation.width,this._wms_image_limitation.height);
+				L.extend(requestParams,img._corrected_size);
+			}
 		/*
 		var crs_bounds = crs.projection.bounds;
 		requestParams.bbox = [

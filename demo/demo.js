@@ -45,9 +45,19 @@ new L.tileLayer.wms.featureInfo
 
 var testImage=new L.imageOverlay("https://stat.online.sberbank.ru/PhizIC-res/15.1/commonSkin/images/logoHeader.png",
 new L.LatLngBounds(new L.LatLng(45.704553, 37.619781),new L.LatLng(55.794553, 49.919781))
-//new L.LatLngBounds(new L.LatLng(44, -93),new L.LatLng(45.02, -92)),{animate:true}
+//new L.LatLngBounds(new L.LatLng(44, -93),new L.LatLng(45.02, -92))
+,{animate:false}
 );
 
+
+var h=800,w=1000,nh=780,nw=900;
+var s =saumi._calcCorrectSize(w,h,nh,nw);
+debugger
+w= 3801;
+h= 1926;
+nw= 2048;
+nh= 1926;
+s =saumi._calcCorrectSize(w,h,nh,nw);
 
 
 map = new L.Map('map', {
@@ -55,8 +65,8 @@ map = new L.Map('map', {
 		//center: new L.LatLng(45, -93.2),
         layers: [testImage,saumi],
         zoom: 6,
-        zoomControl: true,
-		animate:true
+        zoomControl: true
+		//,animate:false
 });
 
 
@@ -70,9 +80,19 @@ testImage._map.on('moveend',function(){
 	debugger
 });
 
+testImage._map.on('viewreset',function(){
+	//debugger
+	var c = this.getContainer();
+	var pane = testImage.getPane();
+	var cpos = L.DomUtil.getPosition(c);
+	var panepos = L.DomUtil.getPosition(pane);
+	debugger
+});
+
 testImage._map.on('zoomanim', function(center,zoom,scale,origin,offset){
 	debugger
 });
+
 
 
 
