@@ -1,6 +1,8 @@
-var urlWms= 'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';//'http://xs-msv:81/services/gis';
+var urlWms= //'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
+		    'http://xs-msv:81/services/gis';
 
 debugger
+
 
 
 var saumi = 
@@ -8,18 +10,57 @@ var saumi =
 //new L.wmsLayer
 new L.tileLayer.wms.featureInfo
 (urlWms, {
-        layers: '04C9E7CE82C34172910ACDBF8F1DF49A',//,2gis,grounds',
+	     layers:'2gis,grounds',
+        //layers: '04C9E7CE82C34172910ACDBF8F1DF49A',//,2gis,grounds',
+		//layers_alias:'Космоснимки',
         version:'1.3.0',        
         format: 'image/png',
         transparent: true,
         opacity:0.9,
         zIndex:101,
         //info_format: 'application/json',
-		tiled:true,
-		
-        GetFeatureInfo:{                         
-           /* ajax:function(url,type,success,error)
+		gutter:0,
+		proxy_url:'http://xs-msv:81/services/proxy',
+        GetFeatureInfo:{  
+			ajax:function(url,type,success,error)
+			{
+				var context=this;
+			require(["dojo/request"],function(request){
+	
+
+				request(url,{handleAs: 'json'})
+				.then(function(data){    
+					debugger
+					success(data);	
+				}, function(err){    
+					debugger
+					context._ajax_error(err,{load:success,handleAs: 'text'});
+				}, function(evt){
+					debugger
+				});
+			});	
+				/*
+				dojo.xhrGet({
+					url: url,
+					handleAs: 'text',					
+					load: function(response, ioArgs){
+						debugger
+						success(response.data);
+						return response;
+					},					
+					error: function(response, ioArgs){
+						
+						debugger
+						context._ajax_error(response,this);
+						return response;
+					}
+							});
+							*/
+			},
+          /*  ajax:function(url,type,success,error)
             {
+				var context=this;
+				debugger
                   //Запросим данные
       $.ajax({
       url: url,
@@ -31,10 +72,11 @@ new L.tileLayer.wms.featureInfo
       },
       error: function (xhr, status, error) {
           debugger 
-          error(error);
+		  context._ajax_error(xhr,this);
+          //error(error);
       }
     });
-            },*/
+            } *,*/
                         //propertyName: 'Title,Description,Layer'
             notFoundMessage:'Нет данных!'
             //,templateContent:'<h2>{Title}</h2><p>{Description}</p><p>{Layer}</p>'
@@ -69,7 +111,13 @@ map = new L.Map('map', {
 		//,animate:false
 });
 
+var controlMap = L.control.layers();
 
+controlMap.addTo(map);
+
+saumi.refreshControlLayers(controlMap);
+//saumi.getLayers().add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки');
+//saumi.getLayers().make('grounds',0);
 
 testImage._map.on('moveend',function(){
 	//debugger
@@ -92,6 +140,8 @@ testImage._map.on('viewreset',function(){
 testImage._map.on('zoomanim', function(center,zoom,scale,origin,offset){
 	debugger
 });
+
+
 
 
 
