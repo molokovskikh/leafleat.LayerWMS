@@ -57,12 +57,12 @@ var layersControlWrap=function(plugin)
 				if(v.length>0)
 					r.push(v);
 			}
-			return r;
+			return r.reverse();
 		},
 		//Запись слоев WMS
 		this._toStr=function(layers){
-			this.context.defaultWmsParams.layers=layers.join(',');
-			if(this.context.options.layers)
+			this.context.defaultWmsParams.layers=layers.reverse().join(',');
+			if(typeof this.context.options.layers!='undefined')
 				this.context.options.layers = this.context.defaultWmsParams.layers;
 		},
 		//Поиск вхождения в массив
@@ -75,11 +75,11 @@ var layersControlWrap=function(plugin)
 			}			
 			return -1;
 		},
-		//Список сурогатных слоев
+		//Список суррогатных слоев
 		this._listLayers = [],
 		
 		this._reorder=function(layer,n){			
-			n = Math.round(n);
+			n = this._listLayers.length-1 - Math.round(n);
 			var r = false;
 			for(var l=0;l<this._listLayers.length;l++)
 			{
@@ -95,7 +95,7 @@ var layersControlWrap=function(plugin)
 			if(r)
 			{
 				debugger
-				var layers= this._parse(),
+				var 
 				    control = this.context._controlLayers,
 					eraseStamp=function(o,v){
 						var _o = {};
@@ -109,9 +109,7 @@ var layersControlWrap=function(plugin)
 					{			
 						var sLayer = this._listLayers[i];
 						if(sLayer.visible)
-						{
-							var pos=this._contains(layers,sLayer.name);
-							if(pos>=0) layers.splice(pos, 1);
+						{							
 								
 							if(control)
 							{
@@ -133,35 +131,50 @@ var layersControlWrap=function(plugin)
 								else
 									control.addOverlay(sLayer,sLayer.display);
 							}
-							
-							if(this._contains(layers,sLayer.name)<0)
-								layers.push(sLayer.name);
+														
 						}
 					}
 
-				
-				this._toStr(layers);
+				this._replicateToWMS();				
 			}
 		},
 		
-		//Добавить слой на контрол (name - название как в WMS, display - отображаемое имя)
+		//Определить позицию слоя по имени
+		this._defineOrder = function(n){
+			var cl=this._listLayers.slice(0);
+			cl.sort(function(a,b) {
+							return L.Util.stamp(a)<L.Util.stamp(b);
+						});												
+			for(var o=0;o<cl.length;o++)
+				if(cl[o]===this._listLayers[n])
+					return o;
+			return -1;
+		},
+		
+		//Реплицировать видимые слои в параметры WMS
+		this._replicateToWMS = function(){
+			var cl=this._listLayers.slice(0),
+				res=[];
+			cl.sort(function(a,b) {
+							return L.Util.stamp(a)>L.Util.stamp(b);
+						});												
+			for(var i=0;i<cl.length;i++)
+				if(cl[i].visible)
+					res.push(cl[i].name);
+					
+			this._toStr(res);
+		},
+		
+		//Добавить слой на контрол, и в параметры WMS (name - название как в WMS, display - отображаемое имя)
 		this.add=function(name,display,base){			
 			name=name?L.Util.trim(name):name;
 			if(name)
 			{
-				var layers= this._parse()
-					 pos =this._contains(layers,name);
-				
-				var sLayer = this._listLayers[name];
-				if(pos<0)
-				{					
-					layers.push(name);
-					this._toStr(layers);									
-				}	
+				var sLayer = this._listLayers[name];				
 				
 				if(!sLayer)
 				{
-					sLayer = sLayer||new surrogateLayer(name,display);
+					sLayer = new surrogateLayer(name,display);
 					if(!this._listLayers[name])
 					{
 						this._listLayers.push(sLayer);
@@ -183,13 +196,15 @@ var layersControlWrap=function(plugin)
 				}
 								
 				sLayer.display=display||sLayer.display;
-								
+				
+				this._replicateToWMS();
+				
 				return sLayer;
 			}
 		},
 		
 		
-		//Удалить слой с контрола
+		//Удалить сурогатный слой из коллекции и из параметров WMS
 		this.remove=function(name){
 			name=name?L.Util.trim(name):name;
 			if(name)
@@ -202,7 +217,8 @@ var layersControlWrap=function(plugin)
 				{					
 					layers.splice(pos, 1);
 					this._toStr(layers);
-					sLayer.visible = false;					
+					sLayer.visible = false;	
+					this.context._needFade = layers.length==0;
 				}
 			}
 		},
@@ -246,6 +262,16 @@ var layersControlWrap=function(plugin)
 				return sLayer;
 			}
 		},
+		this.down=function(name){
+			var pos = this._defineOrder(name);
+			if(pos>0)
+				this.make(name,pos-1);
+		},
+		this.up=function(name){
+			var pos = this._defineOrder(name);
+			if(pos<this._listLayers.length-1)
+				this.make(name,pos+1);
+		},
 		//Возвращает список слоев
 		this.list=function()
 		{			
@@ -269,16 +295,28 @@ var layersControlWrap=function(plugin)
 		
 		this.setMap=function(map)
 		{
+			var empty = function() {};
 			for(var l=0;l<this._listLayers.length;l++)
 			{
-				this._listLayers[l]._context = this; 
-				this._listLayers[l].addTo(map);				
+				this._listLayers[l]._context = this;
+				
+				var sLayer = this._listLayers[l],
+					origin_onAdd=sLayer.onAdd,
+					origin_onRemove=sLayer.onRemove;
+									 
+					sLayer.onAdd=sLayer.onRemove=empty;								
+							
+					sLayer._context = this;																											
+					sLayer.addTo(map);				
+					
+					sLayer.onAdd=origin_onAdd;
+					sLayer.onRemove=origin_onRemove;
 			}
 		},		
 		this._init=function(){
 		  debugger
-		  var p = (this.context.defaultWmsParams.layers||this.context.options.layers||'').split(/\s*,\s*/);
-		  var a = (this.context.options.layers_alias||'').split(/\s*,\s*/);
+		  var p = (this.context.defaultWmsParams.layers||this.context.options.layers||'').split(/\s*,\s*/).reverse();
+		  var a = (this.context.options.layers_alias||'').split(/\s*,\s*/).reverse();
 		  for(var i in p)		  
 		  {
 			  this.add(p[i],a[i]||p[i]);			  
@@ -291,12 +329,17 @@ var layersControlWrap=function(plugin)
 	
 // Module object
 var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({                  
+
+ 
+//++++++++++++++++++++++++++	
+//Public Region
+//++++++++++++++++++++++++++
     
 	statics:{ create :function (url, options) {return new L.TileLayer.WMS.FeatureInfo(url, options);}},
     //includes: L.Mixin.Events,    
     options:{
 		crs:null, //Координатная система для слоя
-		gutter:50, //Ширина отступа по краям изображения
+		gutter:0, //Ширина отступа по краям изображения
 		opacity: 1, //Прозрачнойсть изображения
 		alt: '', //Описание к изображению
 		loading:null, //Обработчик загрузки изображения
@@ -304,6 +347,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		proxy_url:null,//url прокси-сервера, используется при запрете доступа кросс-доменных Ajax-запросов  (http-header: Access-Control-Allow-Origin)
 		//Картинка с ошибкой
 		errorImg_url:'data:image/png;base64,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'
+		,fadeTime:1500//Время перехода в миллисекундах
 	},
 	//Опции для GetFeatureInfo
 	featureInfoOptions:
@@ -345,24 +389,32 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		if(featureInfoOptions)
 			this._replaceProperties(featureInfoOptions,this.defaultParamsGetFeatureInfo);
 		
+		this._calcGutter();
+		
 		this.updateOptions(options);				
 		
 		//Изображение подложка для результата
-		this._image = this._createImage();		
+		//this._image = this._createImage();		
 		
 		//Обертка для слоев
 		this._layers = new layersControlWrap(this);
 	
+		
 		debugger
     },
   onAdd: function(map){    
 		this._map = map;
 		this._updateCrs();
         
+		if(!this._image)
+			this._needFade = true;
+		
+		this._image=this._image||this._createImage();
+		
         map.getPanes().overlayPane.appendChild(this._image);     
 		
 		this._layers.setMap(map);
-        this._reset();		
+        this._reset();
   },
   onRemove: function(map){      
         map.getPanes().overlayPane.removeChild(this._image);     
@@ -416,25 +468,8 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		//Обновить контрол
 		this.refreshControlLayers();
    },
-   //Обновить координатную систему
-   _updateCrs:function()
-   {
-	   this._crs=this.options.crs||(this._map&&this._map.options?this._map.options.crs:this._crs);
-		
-		if(this._crs)
-			this.defaultWmsParams[this._projectionKey]=this._crs.code;
-   },
    
-   //Замена свойств, которые уже есть у приемника
-	_replaceProperties: function(src,dst)
-	{
-		for (var p in src) {
-			if(dst.hasOwnProperty(p))
-				dst[p] = src[p];
-			}
-	},
-	
-	//Получить объект для манипуляции со слоями WMS
+   //Получить объект для манипуляции со слоями WMS
 	getLayers:function()
 	{
 		return this._layers;
@@ -456,9 +491,75 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 			this._controlLayers = control;
 		}
 	},	
+	//Установка Z-индекса
+	setZIndex: function (zIndex) {
+		this.options.zIndex = zIndex;
+		this._updateZIndex();
+
+		return this;
+	},
+   
+   
+//++++++++++++++++++++++++++	
+//Обработчики событий карты  
+//++++++++++++++++++++++++++
+    _reset: function (e) {
+		this._update(true);	   
+    },
+	_moveend: function (e) {				 
+	  if(!this._bounds.contains(this._map.getBounds()))
+	  {		
+		this._update(true);	  
+	  }
+    },
+    _resize:function()
+    { 
+	   if(!this._bounds.contains(this._map.getBounds())||L.DomUtil.hasClass(this._image, 'leaflet-tile-loaded-error'))
+	   {		
+		 this._update(true);	  
+	   }
+    },
+    _click:function(e){
+	   this._getFeatureInfo(e.latlng);
+    },
+//--------------------------	
+//Обработчики событий карты  
+//--------------------------
+ 
+
+//--------------------------	
+//Public Region
+//--------------------------
+ 
+ 
+ 
+ 
+ 
+//++++++++++++++++++++++++++	
+//Private Region
+//++++++++++++++++++++++++++
+   
+   
+   //Обновить координатную систему
+   _updateCrs:function()
+   {
+	   this._crs=this.options.crs||(this._map&&this._map.options?this._map.options.crs:this._crs);
+		
+		if(this._crs)
+			this.defaultWmsParams[this._projectionKey]=this._crs.code;
+   },
+   
+   
+   //Замена свойств, которые уже есть у приемника
+	_replaceProperties: function(src,dst)
+	{
+		for (var p in src) {
+			if(dst.hasOwnProperty(p))
+				dst[p] = src[p];
+			}
+	},
 	
-
-
+	
 	_createImage: function () {
 		var img = L.DomUtil.create('img','leaflet-wms-layer leaflet-tile ' + (this._zoomAnimated ? 'leaflet-zoom-animated' : ''));		
 		img.onselectstart = L.Util.falseFn;
@@ -473,6 +574,11 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 	   if(this._image)
 			L.DomUtil.setOpacity(this._image, this.options.opacity);
 	},
+	_updateZIndex: function () {
+		if (this._image && this.options.zIndex !== undefined && this.options.zIndex !== null) {
+			this._image.style.zIndex = this.options.zIndex;
+		}
+	},
 	_updateImageRectangle:function(img,point,size)
 	{			    
 		L.DomUtil.setPosition(img, point);
@@ -485,27 +591,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 	{
 		this._map.getContainer().style.cursor = !end?"progress":"default";
 	}, 
-   
-    
-    _reset: function (e) {
-		this._update();	   
-    },
-	_moveend: function (e) {				 
-	  if(!this._bounds.contains(this._map.getBounds()))
-	  {		
-		this._update();	  
-	  }
-    },
-    _resize:function()
-    { 
-	   if(!this._bounds.contains(this._map.getBounds())||L.DomUtil.hasClass(this._image, 'leaflet-tile-loaded-error'))
-	   {		
-		 this._update();	  
-	   }
-    },
-    _click:function(e){
-	   this._getFeatureInfo(e.latlng);
-    },
+      
 
 	//Получить параметры преобразования элемента
 	_getTransform:function(el){		
@@ -551,19 +637,46 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		}
 	},
 
+  _calcGutter:function(){
+	  if(!this.options.gutter)
+	  {
+		  debugger
+		  //Будем полагать, чем шире экран тем меньше необходимость в канале за областью видимости
+		  //Зададим матрицу зависимости ширины канала невидимой области от разрешения экрана
+		  var modes=
+		  [ 
+		  { mode: [1920,1080],gutter:10},		  
+		  { mode: [1280,1024],gutter:30},
+		  { mode: [1024,768],gutter:50}
+		  ];
+		  //Вычислим параметры экрана
+		  var s_bounds=L.bounds([0,0],[window.screen.width,window.screen.height]);
+		  
+		  //Вычисляем ширину невидимого канала по заданой матрице
+		  for(var m in modes)
+		  {			
+			if(s_bounds.contains(L.bounds([0,0],modes[m].mode)))
+			{
+			  this.options.gutter=modes[m].gutter;
+			  break;
+		    }
+		  }
+	  }
+  },
   //Расчет правильного размера на основе натурального и текущего
   _calcCorrectSize:function(w,h,nw,nh)
   {
-	  var k=h/w,  //Запомним пропорцию изображения
-	      kw=nw/w,//Вычислим отношение к оригиналу (ширина)
-		  kh=nh/h,//Вычислим отношение к оригиналу (высота)
-		  direct=kw>kh&&nw<nh,
+	  var k=h/w,  //Запомним пропорцию изображения (высота/ширина)
+	      kw=nw/w,//Вычислим отношение установленной ширины в стиле img к натуральной ширине изображения 
+		  kh=nh/h,//Вычислим отношение установленной высоты в стиле img к натуральной высоте изображения 
+		  direct=k<1,
 		  e=direct?nw:nh,
 		  i=direct?nh:nw,
 		  f=function(v){ return  Math.round( direct? v*k: v/k ) },
 		  r=function(a,b){ return { width:(direct?a:b),height:(direct?b:a) }},
 		  c = f(i);	
 	
+		  debugger
 		  if(c<e)
 		  {			  
 			if(nw>nh)
@@ -589,12 +702,14 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
   //Проверка изображения на правильность натуральных размеров, по сравнению с тем что было запрошено
   _imageValidCorrectSize:function(img)
   {	
+		return true;
 		var h=parseInt(img.style['height']),
 			w=parseInt(img.style['width']),
 			nh=img.naturalHeight,
 			nw=img.naturalWidth;
-		if(!img._corrected_size && (nh<h||nw<w))
+		if(img.src!=''&&!img._corrected_size && (nh>0&&nw>0) && (nh<h||nw<w))
 		{
+			/*
 			//Запомним ограничение wms-сервиса, по  размеру изображения
 			if(!this._wms_image_limitation)
 				this._wms_image_limitation = { width: nw,height: nh };
@@ -604,7 +719,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 							width:  Math.max(nw,this._wms_image_limitation.width),
 							height: Math.max(nh,this._wms_image_limitation.height)
 						});
-			
+			*/
 			img._corrected_size=this._calcCorrectSize(w,h,nw,nh);
 			
 			/*
@@ -623,17 +738,46 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
   //Добавление изображения на визуальный слой
   _imageReady:function(img)
    {
-	   var pane = this.getPane();	   
+	  var pane = this.getPane();  
 	   if(!(this._image===img))
 	   {
 		L.DomUtil.removeClass(this._image, 'leaflet-tile-loaded');
 		L.DomUtil.removeClass(this._image, 'leaflet-tile-loaded-error');
-		pane.removeChild(this._image);		
-		L.DomUtil.addClass(img, 'leaflet-tile-loaded');			
-		pane.appendChild(img);
+		var nf = this._needFade;
+		this._visible_image(false);
+		
+		var addNew=function()
+		{		
+		pane.removeChild(this._image);
+		
+		img.style.visibility = 'hidden';
+		
+		L.DomUtil.addClass(img, 'leaflet-tile-loaded');
+		
+		pane.appendChild(img);			
+		
 		this._image_prev = this._image;
-		this._image = img;
-		this._updateOpacity();
+		this._image = img;		
+		
+		if(!this._layers.isEmpty())
+		{
+			if(nf)
+			{
+				this._needFade = nf;
+				//alert('fsd');
+			}
+			this._visible_image(true);
+		}
+		};
+		
+		var self = this;
+		if(nf)
+			setTimeout(function(){
+				addNew.call(self);
+			},this.options.fadeTime);
+		else
+			addNew.call(self);
+		
 	   }
    },
    
@@ -652,22 +796,100 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
      }	
 	 
    },
-   
-_update:function()
-{		
-    	
-	var newImg = this._image_prev||this._createImage();
-    //Сбросим загрузку изображения, если выполняется
+ 
+
+ 
+ //Показать/скрыть изображение
+_visible_image:function(show)
+{
+	show=show===true;	
+		
+	//Если поддерживается CSS-анимация
+	if(!!L.DomUtil.TRANSITION)		
+	{		
+		if(this._needFade)
+		{
+			var sec = (this.options.fadeTime/1000).toString();
+			this._image.style[L.DomUtil.TRANSITION]=show?'opacity '+sec+'s linear':'opacity '+sec+'s linear,visibility 0s '+sec+'s';
+			if(show)
+			{
+				if(!this._image.style.opacity) 
+					this._image.style.opacity=0;
+				this._needFade=!this._needFade;				
+			}
+		}		
+	}	
+	
+	var c=this._image.style.visibility,
+		v=show?'visible':'hidden';
+		if(c!=v)
+		{
+			if(show)
+			{
+				this._image.style.opacity = 0;
+				this._image.style.visibility = v;
+				this._image.style.opacity=this.options.opacity||1;
+			}
+			else
+			{				
+				this._image.style.opacity=0;
+				this._image.style.visibility = v;
+			}
+		}
+},
+
+_visible_image_state:function()
+{
+	return this._image.style.visibility!='hidden';
+},
+
+//Определить необходимость отложенного показа
+_lazy_show:function()
+{
+	var layers = this._layers._parse();	
+	//Если запрошен 1 слой, и он не указан в url, изображения, то отложенный показ
+	return  layers.length==1&&!(new RegExp('layers\\s*\\=\\s*.*'+layers[0],'i').test(this._image.src));
+},
+//Проверить были ли изменения по сравнению 
+_has_changed:function()
+{
+	return !(new RegExp('layers\\s*\\=\\s*'+this.defaultWmsParams.layers,'i').test(decodeURIComponent(this._image.src.indexOf('http')>=0?this._image.src:'')));
+},
+
+//Обновление слоя
+_update:function(force)
+{		    	
+	if(!this._has_changed()&&!force)
+	{
+		if(!this._layers.isEmpty())
+		{
+			if(!this._visible_image_state())
+				this._visible_image(true);
+		}
+		else
+		{
+			if(this._visible_image_state())
+				this._visible_image(false);
+		}
+		return;
+	}
+	
+	var newImg = this._image_prev||this._createImage();    
+	
+	//Сбросим загрузку изображения, если выполняется
 	this._abortLoadImage(newImg);
 	
 	//Если список выбранных слоев пуст, то скроем изображение
 	if(this._layers.isEmpty())
 	{
-		this._image.style.display='none';
+		this._visible_image(false);		
 		return;
 	}
 	else
-		this._image.style.display='block';
+	{
+		if(!this._lazy_show())		
+			this._visible_image(true);
+	}
 	
     //Если в параметрах передана функции обработки загрузки изображения
 	var loading=this.options.loading,loaderr=null,
@@ -687,7 +909,9 @@ _update:function()
 				loading.call(this,true);
 				this.off('load',loaded);
 			}
-			this._imageReady(newImg);
+			if(force)
+				this._needFade=true;
+			this._imageReady(newImg);			
 			this.off('loaderr',loaderr,this);
 		};
 	
@@ -846,8 +1070,12 @@ _update:function()
 	//Загрузка изображения,
 	_getMap:function(img,gutter)
 	{		  
+		//Если список слоев пуст, то выходим
+		if(this._layers.isEmpty())
+			return;
+	
 		var  pad = function(r,b) {
-				var h = b.max.y - b.min.y,w = b.max.x - b.min.x;
+				var h = Math.abs(b.max.y - b.min.y)*r,w = Math.abs(b.max.x - b.min.x)*r;
 				return new L.Bounds([b.min.x-w,b.min.y-h],[b.max.x+w,b.max.y+h])
 			};
 						
@@ -1012,6 +1240,11 @@ _update:function()
 				 
              });              
     }
+	
+//--------------------------
+//Private Region
+//--------------------------
+	
 });
 
 L.wmsLayer=function() { return L.WMSLayer.create.apply(this,arguments);};

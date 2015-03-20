@@ -1,5 +1,5 @@
-var urlWms= //'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
-		    'http://xs-msv:81/services/gis';
+var urlWms= 'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
+		    //'http://xs-msv:81/services/gis';
 
 debugger
 
@@ -10,19 +10,19 @@ var saumi =
 //new L.wmsLayer
 new L.tileLayer.wms.featureInfo
 (urlWms, {
-	     layers:'2gis,grounds',
-        //layers: '04C9E7CE82C34172910ACDBF8F1DF49A',//,2gis,grounds',
-		//layers_alias:'Космоснимки',
+	    // layers:'2gis,grounds,buildings,streets',
+        layers: '04C9E7CE82C34172910ACDBF8F1DF49A',
+		layers_alias:'Космоснимки',
         version:'1.3.0',        
         format: 'image/png',
         transparent: true,
         opacity:0.9,
         zIndex:101,
         //info_format: 'application/json',
-		gutter:0,
+		//gutter:0,
 		proxy_url:'http://xs-msv:81/services/proxy',
         GetFeatureInfo:{  
-			ajax:function(url,type,success,error)
+			/*ajax:function(url,type,success,error)
 			{
 				var context=this;
 			require(["dojo/request"],function(request){
@@ -55,8 +55,9 @@ new L.tileLayer.wms.featureInfo
 						return response;
 					}
 							});
-							*/
+							
 			},
+			*/
           /*  ajax:function(url,type,success,error)
             {
 				var context=this;
@@ -91,7 +92,7 @@ new L.LatLngBounds(new L.LatLng(45.704553, 37.619781),new L.LatLng(55.794553, 49
 ,{animate:false}
 );
 
-
+/*
 var h=800,w=1000,nh=780,nw=900;
 var s =saumi._calcCorrectSize(w,h,nh,nw);
 debugger
@@ -100,7 +101,7 @@ h= 1926;
 nw= 2048;
 nh= 1926;
 s =saumi._calcCorrectSize(w,h,nh,nw);
-
+*/
 
 map = new L.Map('map', {
         center: new L.LatLng(55.754553, 37.619781),
@@ -117,29 +118,10 @@ controlMap.addTo(map);
 
 saumi.refreshControlLayers(controlMap);
 //saumi.getLayers().add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки');
-//saumi.getLayers().make('grounds',0);
+//saumi.getLayers().up('grounds');
 
-testImage._map.on('moveend',function(){
-	//debugger
-	var c = this.getContainer();
-	var pane = testImage.getPane();
-	var cpos = L.DomUtil.getPosition(c);
-	var panepos = L.DomUtil.getPosition(pane);
-	debugger
-});
+saumi.refreshControlLayers(controlMap);
 
-testImage._map.on('viewreset',function(){
-	//debugger
-	var c = this.getContainer();
-	var pane = testImage.getPane();
-	var cpos = L.DomUtil.getPosition(c);
-	var panepos = L.DomUtil.getPosition(pane);
-	debugger
-});
-
-testImage._map.on('zoomanim', function(center,zoom,scale,origin,offset){
-	debugger
-});
 
 
 
