@@ -1,18 +1,33 @@
-var urlWms= 'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
-		    //'http://xs-msv:81/services/gis';
+var urlWms= //'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
+		    //'http://xs-msv:81/services/gis'
+			'http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?';
 
-debugger
 
-
+var custom_fn = function(params){
+			
+			var p=
+			{ 
+				bbox:params.bbox,
+				dpi:'96',
+				f  :'image',
+				format:'PNG32',
+				bboxSR:'102100',
+				imageSR:'102100',
+				size:[params.width,params.height].join(',')
+			};
+			
+			return p;
+		};
+			
 
 var saumi = 
 //    new L.TileLayer.WMS//
 //new L.wmsLayer
 new L.tileLayer.wms.featureInfo
 (urlWms, {
-	    // layers:'2gis,grounds,buildings,streets',
-        layers: '04C9E7CE82C34172910ACDBF8F1DF49A',
-		layers_alias:'Космоснимки',
+	     layers:'2gis,grounds,buildings,streets',
+        //layers: '04C9E7CE82C34172910ACDBF8F1DF49A',
+		//layers_alias:'Космоснимки',
         version:'1.3.0',        
         format: 'image/png',
         transparent: true,
@@ -20,6 +35,7 @@ new L.tileLayer.wms.featureInfo
         zIndex:101,
         //info_format: 'application/json',
 		//gutter:0,
+		fn_custom:  custom_fn,
 		proxy_url:'http://xs-msv:81/services/proxy',
         GetFeatureInfo:{  
 			/*ajax:function(url,type,success,error)
