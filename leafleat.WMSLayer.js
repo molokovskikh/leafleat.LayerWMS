@@ -205,7 +205,7 @@ var layersControlWrap=function(plugin)
 		
 		
 		//Удалить сурогатный слой из коллекции и из параметров WMS
-		this.remove=function(name){
+		this.remove=function(name){			
 			name=name?L.Util.trim(name):name;
 			if(name)
 			{
@@ -289,8 +289,8 @@ var layersControlWrap=function(plugin)
 		},		
 		//Проверка на пустые слои
 		this.isEmpty=function()
-		{
-			return this.list().length==0;
+		{			
+			return this.list().length==0&&(!this.context.options.ignoreEmpty);
 		},
 		
 		this.setMap=function(map)
@@ -414,7 +414,8 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
         this._reset();
   },
   onRemove: function(map){      
-        map.getPanes().overlayPane.removeChild(this._image);     
+        this._loadingImage(true);
+		map.getPanes().overlayPane.removeChild(this._image);		
   },  
   
   getAttribution: function () {
@@ -448,7 +449,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		if(options)
 		{
 			this._replaceProperties(options,this.defaultWmsParams);
-			this._replaceProperties(options,this.defaultParamsGetMap);
+			this._replaceProperties(options,this.defaultParamsGetMap);			
 			this._replaceProperties(options,this.defaultParamsGetFeatureInfo);				
 		
 			if(options.GetFeatureInfo)		
@@ -588,7 +589,8 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
      //Обработчик загрузки изображения
     _loadingImage:function(end)
 	{
-		this._map.getContainer().style.cursor = !end?"progress":"default";
+		if(this._map)
+			this._map.getContainer().style.cursor = !end?"progress":"default";		
 	}, 
       
 
@@ -737,6 +739,12 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
   //Добавление изображения на визуальный слой
   _imageReady:function(img)
    {
+	  if(!this._map)
+	  {
+		  this._visible_image(false);
+		  return;
+	  }
+		  
 	  var pane = this.getPane();  
 	   if(!(this._image===img))
 	   {
@@ -942,6 +950,9 @@ _visible_image_state:function()
 //Определить необходимость отложенного показа
 _lazy_show:function()
 {
+	//if(!!this.options.ignoreCase)
+	//return true;
+	
 	var layers = this._layers._parse();	
 	//Если запрошен 1 слой, и он не указан в url, изображения, то отложенный показ
 	return  layers.length==1&&!(new RegExp('layers\\s*\\=\\s*.*'+layers[0],'i').test(this._image.src));
@@ -1006,7 +1017,8 @@ _update:function(force)
 	var loading=this.options.loading,loaderr=null,
 		isLoading = typeof loading==='function',
 		loaded = function()
-		{ 			
+		{ 		
+			debugger
 			//Проверка размеров полученного изображения
 		    if(!this._imageValidCorrectSize(newImg))
 			{
@@ -1061,11 +1073,14 @@ _update:function(force)
 
 	
 	_animateZoom: function (e) {
-		var topLeft = this._map._latLngToNewLayerPoint(this._bounds.getNorthWest(), e.zoom, e.center),
-		    size = this._map._latLngToNewLayerPoint(this._bounds.getSouthEast(), e.zoom, e.center).subtract(topLeft),
-		    offset = topLeft.add(size._multiplyBy((1 - 1 / e.scale) / 2));
+		if(this._bounds)
+		{
+			var topLeft = this._map._latLngToNewLayerPoint(this._bounds.getNorthWest(), e.zoom, e.center),
+				size = this._map._latLngToNewLayerPoint(this._bounds.getSouthEast(), e.zoom, e.center).subtract(topLeft),
+				offset = topLeft.add(size._multiplyBy((1 - 1 / e.scale) / 2));
 
-		L.DomUtil.setTransform(this._image, offset, e.scale);
+			L.DomUtil.setTransform(this._image, offset, e.scale);
+		}
 	},
 	
  //Обработка ошибки AJAX
@@ -1183,7 +1198,12 @@ _update:function(force)
 	{		  	
 		//Если список слоев пуст, то выходим
 		if(this._layers.isEmpty())
+		{
+			debugger
+			if(this.options.loading) 
+				this.options.loading(true);
 			return;
+		}
 	
 		var  pad = function(r,b) {
 				var h = Math.abs(b.max.y - b.min.y)*r,w = Math.abs(b.max.x - b.min.x)*r;
