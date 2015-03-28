@@ -28,19 +28,23 @@ var layersControlWrap=function(plugin)
 				
 				this.base = base===true;
 				
-				this.visible = true;							
+				this.visible = true;
 			},
-			onAdd:function(map){	
+			onAdd:function(map){
+				
+				this._context._map = map;
+				
 				//Добавим слой
 				this._context.add(this.name);
-				//Обновим базовый слой
-				this._context.context._update();
+
 			},
 			onRemove:function(map){
+
+				this._context._map = map;
+				
 				//Скроем слой
 				this._context.remove(this.name);
-				//Обновим базовый слой
-				this._context.context._update();
+								
 			}
 		});
 		
@@ -61,9 +65,23 @@ var layersControlWrap=function(plugin)
 		},
 		//Запись слоев WMS
 		this._toStr=function(layers){
+			var prev = this.context.defaultWmsParams.layers;
 			this.context.defaultWmsParams.layers=layers.reverse().join(',');
 			if(typeof this.context.options.layers!='undefined')
 				this.context.options.layers = this.context.defaultWmsParams.layers;
+			
+			//Вызовем событие изменения параметров у слоя
+			if(this.context._map&&prev!=this.context.defaultWmsParams.layers)
+			{
+				this.context.fire('layers_changed',
+				{ 	
+					before:prev,//До изменения
+					after: this.context.defaultWmsParams.layers,//После изменения
+					visibility: layers.length //Количество видимых слоев
+				});
+			}
+			
+			this._isEmpty = layers.length==0;
 		},
 		//Поиск вхождения в массив
 		this._contains=function(a, obj) {
@@ -184,6 +202,10 @@ var layersControlWrap=function(plugin)
 				}
 								
 				sLayer.visible = true;
+								
+				//Если WMS слой еще не добавлен на карту, сделаем это
+				if(!this.context._map&&this._map)
+					this.context.addTo(this._map);
 				
 				var control = this.context._controlLayers;
 				if(control)
@@ -197,7 +219,10 @@ var layersControlWrap=function(plugin)
 								
 				sLayer.display=display||sLayer.display;
 				
-				this._replicateToWMS();
+				
+				sLayer.visible = this.checked(true,this._map,sLayer)==true;
+				
+				this._replicateToWMS();								
 				
 				return sLayer;
 			}
@@ -216,9 +241,8 @@ var layersControlWrap=function(plugin)
 				if(pos>=0)
 				{					
 					layers.splice(pos, 1);
-					this._toStr(layers);
-					sLayer.visible = false;	
-					this.context._needFade = layers.length==0;
+					sLayer.visible = false;					
+					this._toStr(layers);					
 				}
 			}
 		},
@@ -281,18 +305,49 @@ var layersControlWrap=function(plugin)
 			{			
 				var layer = layers[l],
 					visible = layer.visible;
-					
+														
 				if(visible)
 					result.push(layer);
 			}
 			return result;
 		},		
-		//Проверка на пустые слои
+		
+		//Проверяет выбраны ли хоть один суррогатный слой, для отображения на карте
 		this.isEmpty=function()
-		{			
-			return this.list().length==0&&(!this.context.options.ignoreEmpty);
+		{						
+			return this._parse().length==0&&(!this.context.options.ignoreEmpty);
+			//return this.list().length==0&&(!this.context.options.ignoreEmpty);
 		},
 		
+		this._fn_empty=function() {},
+		
+		this.checked=function(check,map,layer){
+			if(layer&&layer.visible&&layer.addTo&&map)
+			{
+				if(check==null&&typeof check==='undefined')
+					return map.hasLayer(layer);
+				
+				if(!!check&&map.hasLayer(layer))
+					return true;
+				
+				if(!check&&!map.hasLayer(layer))
+					return false;
+				
+				var origin_onAdd=layer.onAdd,
+					origin_onRemove=layer.onRemove;
+				
+				layer.onAdd=layer.onRemove=this._fn_empty;
+				
+				if(!!check)
+					layer.addTo(map);
+				else
+					layer.remove();
+				
+				layer.onAdd=origin_onAdd;
+				layer.onRemove=origin_onRemove;
+			}
+			return null;
+		},
 		this.setMap=function(map)
 		{
 			var empty = function() {};
@@ -303,15 +358,16 @@ var layersControlWrap=function(plugin)
 				var sLayer = this._listLayers[l],
 					origin_onAdd=sLayer.onAdd,
 					origin_onRemove=sLayer.onRemove;
-									 
-					sLayer.onAdd=sLayer.onRemove=empty;								
-							
-					sLayer._context = this;																											
-					sLayer.addTo(map);				
 					
-					sLayer.onAdd=origin_onAdd;
-					sLayer.onRemove=origin_onRemove;
+					sLayer._context = this;
+					
+					if(sLayer.visible&&this.checked(null,this._map,sLayer)==null)
+					{
+						debugger
+						this.checked(true,this._map,sLayer);
+					}
 			}
+			this._replicateToWMS();
 		},		
 		this._init=function(){		 
 		  var p = (this.context.defaultWmsParams.layers||this.context.options.layers||'').split(/\s*,\s*/).reverse();
@@ -397,7 +453,9 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		
 		//Обертка для слоев
 		this._layers = new layersControlWrap(this);
-
+		
+		//Установим обработку события при изменении слоев WMS
+		this.on('layers_changed',this._onLayersChanged,this);
     },
   onAdd: function(map){    
 		this._map = map;
@@ -409,12 +467,17 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		this._image=this._image||this._createImage();
 		
         map.getPanes().overlayPane.appendChild(this._image);     
+				
+		if(this._layers&&!this._layers._map)
+			this._layers.setMap(map);
 		
-		this._layers.setMap(map);
         this._reset();
   },
   onRemove: function(map){      
-        this._loadingImage(true);
+
+		if(this._loadingImage)
+			this._loadingImage(true);
+		
 		map.getPanes().overlayPane.removeChild(this._image);		
   },  
   
@@ -452,8 +515,13 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 			this._replaceProperties(options,this.defaultParamsGetMap);			
 			this._replaceProperties(options,this.defaultParamsGetFeatureInfo);				
 		
-			if(options.GetFeatureInfo)		
+			if(options.GetFeatureInfo)
+			{
 				this.featureInfoOptions = L.Util.extend(this.featureInfoOptions,options.GetFeatureInfo);
+				
+				if(this.featureInfoOptions.ignore)
+					this.options.ignoreFeatureInfo = this.featureInfoOptions.ignore;
+			}					
 		}
 		
 		this._wmsVersion = parseFloat(this.defaultWmsParams.version);			
@@ -473,18 +541,21 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		return this._layers;
 	},
 	//Обновить контрол со слоями на основании параметров WMS
-	refreshControlLayers:function(control){
+	refreshControlLayers:function(control,checked){
 		control=control||this._controlLayers;
 		if(control)
 		{		
-			var layers = this._layers.list();
-			for(var l in layers)
+			var layers = this._layers._listLayers;
+			for(var l=0;l<layers.length;l++)
 			{
 				var layer = layers[l];
 				if(layer.base)
 					control.addBaseLayer(layer,layer.display);	
 				else
+				{
+					this._layers.checked(!!checked,this._map,layer);
 					control.addOverlay(layer,layer.display);
+				}
 			}
 			this._controlLayers = control;
 		}
@@ -517,7 +588,10 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		 this._update(true);	  
 	   }
     },
-    _click:function(e){
+    _click:function(e){	
+	   
+	   if(this.options.ignoreFeatureInfo)
+		   return;
 	   this._getFeatureInfo(e.latlng);
     },
 //--------------------------	
@@ -584,6 +658,41 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		L.DomUtil.setPosition(img, point);
 		img.style.width  = Math.round(size.x) + 'px';
 		img.style.height = Math.round(size.y) + 'px';
+	},
+	
+	
+	//Обработчик изменения слоев WMS
+	_onLayersChanged:function(e)
+	{						
+		this._needFade = (e.visibility==0&&e.before!='')||(e.visibility==1&&e.after!='');
+		/*
+		L.popup()
+		.setLatLng(this._map.getBounds().pad(-0.3).getNorthWest())
+		.setContent('<p>Видимых = '+e.visibility+'</p>'
+				   +'<p>С  ='+e.before+'</p>'
+				   +'<p>На  ='+e.after+'</p>'
+				   +'<p>_needFade = '+this._needFade +'</p>'
+				   +'<p>this._layers.isEmpty() = '+this._layers.isEmpty() +'</p>'
+				   +'<p>this._lazy_show() = '+this._lazy_show() +'</p>'
+				   +'this._visible_image_state() = '+this._visible_image_state() +'</p>'
+				   )
+		.openOn(this._map);
+		
+		if(this._needFade&&this._layers.isEmpty()&&this._visible_image_state())
+		{
+			debugger
+			this._visible_image(false,function()
+			{
+				debugger
+			});
+			return;
+		}
+		*/
+		
+		//if(e.visibility>0&&this._loading_img)
+		//	this._abortLoadImage(this._loading_img);
+		
+		this._update();
 	},
    
      //Обработчик загрузки изображения
@@ -787,8 +896,8 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		L.DomUtil.removeClass(img, 'leaflet-tile-loaded');
 		L.DomUtil.addClass(img, 'leaflet-tile');
 		var ponload=img.onload,ponerror=img.onerror;
-		img.style.visibility = 'hidden';
-		img.style.opacity = 0;
+		//img.style.visibility = 'hidden';
+		//img.style.opacity = 0;
 		img.onload=img.onerror=img.onabort=null;
 		img.src='';
 		img.onload=ponload;
@@ -802,6 +911,9 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
  //Показать/скрыть изображение
 _visible_image:function(show,callback)
 {
+	if(!this._image)
+		return;
+	
 	show=show===true;	
 	
 	//Функция установки параметров показа изображения
@@ -890,7 +1002,7 @@ _visible_image:function(show,callback)
 		//Если прозрачность не указана, поправим ситуацию (первичная  инициализация image)
 		if(!this._image.style.opacity) 
 		{				
-			this._image.style.transition = 'opacity 0s linear,visibility 0s 0s';
+			this._image.style[L.DomUtil.TRANSITION]='opacity 0s linear,visibility 0s 0s';
 			this._image.style.opacity=0;
 			this._image.style.visibility = 'hidden';			
 		}														
@@ -934,7 +1046,11 @@ _visible_image:function(show,callback)
 		}
 	
 		return;
-	}	
+	}
+
+	//Если было установленно то сбросим
+	if(!!L.DomUtil.TRANSITION&&!this._needFade&&this._image.style[L.DomUtil.TRANSITION].length>0)
+		this._image.style[L.DomUtil.TRANSITION]='opacity 0s linear,visibility 0s 0s';
 	
 	
 	fn_show.call(this,show);
@@ -949,10 +1065,7 @@ _visible_image_state:function()
 
 //Определить необходимость отложенного показа
 _lazy_show:function()
-{
-	//if(!!this.options.ignoreCase)
-	//return true;
-	
+{	
 	var layers = this._layers._parse();	
 	//Если запрошен 1 слой, и он не указан в url, изображения, то отложенный показ
 	return  layers.length==1&&!(new RegExp('layers\\s*\\=\\s*.*'+layers[0],'i').test(this._image.src));
@@ -960,9 +1073,10 @@ _lazy_show:function()
 //Проверить были ли изменения, которые требуют повторного обращения к WMS 
 _has_changed:function()
 {	 
-	var _url=decodeURIComponent(this._image.src.indexOf('http')>=0?this._image.src:'');
+	
+	var _url=decodeURIComponent(this._image&&this._image.src&&this._image.src.indexOf('http')>=0?this._image.src:'');
 
-	if(this._image._bounds_map)
+	if(this._image&&this._image._bounds_map)
 	{
 		if(!this._map.getBounds().contains(this._image._bounds_map))
 			return true;
@@ -974,7 +1088,8 @@ _has_changed:function()
 
 //Обновление слоя
 _update:function(force)
-{		    	
+{		    
+	
 	if(!this._has_changed()&&!force)
 	{
 		if(!this._layers.isEmpty())
@@ -989,22 +1104,16 @@ _update:function(force)
 		}
 		return;
 	}
-	
-	if(this._image===this._image_prev)
-	{
-		debugger
-		//this._image_prev=this._createImage();
-	}
-	
-	var newImg = !this._image_prev||(this._image&&this._image===this._image_prev)?this._createImage():this._image_prev;
-	
+			
+	var newImg = !this._image_prev||(this._image&&this._image===this._image_prev)?this._createImage():this._image_prev;	
+		
 	//Сбросим загрузку изображения, если выполняется
 	this._abortLoadImage(newImg);
 	
 	//Если список выбранных слоев пуст, то скроем изображение
 	if(this._layers.isEmpty())
 	{
-		this._visible_image(false);		
+		this._visible_image(false);
 		return;
 	}
 	else
@@ -1014,31 +1123,34 @@ _update:function(force)
 	}
 	
     //Если в параметрах передана функции обработки загрузки изображения
-	var loading=this.options.loading,loaderr=null,
+	var self=this,
+		loading=this.options.loading,loaderr=null,
 		isLoading = typeof loading==='function',
 		loaded = function()
 		{ 		
-			debugger
+			
 			//Проверка размеров полученного изображения
-		    if(!this._imageValidCorrectSize(newImg))
+		    if(!self._imageValidCorrectSize(newImg))
 			{
 				debugger
-				this._getMap(newImg);
+				self._getMap.call(self,newImg);
 				return;
 			}
 			
-			if(isLoading) 	
-			{
-				loading.call(this,true);
-				this.off('load',loaded);
-			}
+			if(isLoading) 				
+				loading.call(self,true);			
+			
+			L.DomEvent.off(newImg,'load',loaded,newImg);
+			L.DomEvent.off(newImg,'error',loaderr,newImg);
+			
 			if(force)
-				this._needFade=true;
-			this._imageReady(newImg);			
-			this.off('loaderr',loaderr,this);
+				self._needFade=true;
+			
+			self._imageReady(newImg);			
 		};
 	
-	this.on('load',loaded,this);
+	L.DomEvent.on(newImg,'load',loaded,newImg);
+		
 	
 	var gutter = this.options.gutter;
 	
@@ -1048,21 +1160,22 @@ _update:function(force)
 			if(gutter>0)
 			{
 				gutter = gutter>10?gutter-10:0;
-				this._getMap(newImg,gutter);
+				self._getMap.call(self,newImg,gutter);
 			} 
 			else
 			{			
 				//Проверка размеров полученного изображения
-				if(!this._imageValidCorrectSize(newImg))
+				if(!self._imageValidCorrectSize(newImg))
 				{
 					debugger
 				}					
-				newImg.src=this.options.errorImg_url;
-				loaded.call(this);	
+				newImg.src=self.options.errorImg_url;
+				loaded.call(self);	
 				L.DomUtil.addClass(newImg, 'leaflet-tile-loaded-error');				
 			}						
 		};
-	this.on('loaderr',loaderr,this);	
+	
+	L.DomEvent.on(newImg,'error',loaderr,newImg);
 		
 	if(isLoading)	
 		loading.call(this,false);	
@@ -1268,9 +1381,11 @@ _update:function(force)
 		
 		//Кастомная функция для корректировки параметров
 		if(typeof this.options.fn_custom=='function')		
-			requestParams = this.options.fn_custom(requestParams);
+			requestParams = this.options.fn_custom.call(this,requestParams);
 		
 		
+		//Запомним текущую загружаемое изображение
+		this._loading_img = img;
 		
 		//Загрузка изображения
 		img.src=this._url +L.Util.getParamString(requestParams, this._url, this.options.uppercase);
@@ -1332,7 +1447,8 @@ _update:function(force)
 		}
 
     //Ссылка на запрос информации к WMS        
-		var urlFeatureInfo=this._url + L.Util.getParamString(requestParams, this._url, this.options.uppercase);
+		var urlBase = params.url||this._url,
+			urlFeatureInfo= urlBase + L.Util.getParamString(requestParams, urlBase, this.options.uppercase);
        
         var showResult=function(data){
             var prepareTemplateData=function(src){

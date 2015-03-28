@@ -1,49 +1,5 @@
 var urlWms= //'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
-		    //'http://xs-msv:81/services/gis'
-			'http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?';
-
-
-var custom_fn = function(params){
-			
-			var p=
-			{ 
-				transparent:true,
-				bbox:params.bbox,
-				dpi:'96',
-				f  :'image',
-				format:'PNG32',
-				bboxSR:'102100',
-				imageSR:'102100',
-				size:[params.width,params.height].join(',')
-			};
-			
-			return p;
-		};
-	
-var rosreestrLayer = new	L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?',
-{
-	fn_custom:
-	function(params){
-			
-			var p=
-			{ 
-				transparent:true,
-				bbox:params.bbox,
-				dpi:'96',
-				f  :'image',
-				format:'PNG32',
-				bboxSR:'102100',
-				imageSR:'102100',
-				size:[params.width,params.height].join(',')
-			};
-			
-			return p;
-		},
-	ignoreEmpty:true,
-	proxy_url:'http://xs-msv:81/services/proxy',
-	opacity:0.55,
-	transparent:true
-});
+		    'http://xs-msv:81/services/gis';
 
 
 var saumi = 
@@ -58,10 +14,10 @@ new L.tileLayer.wms.featureInfo
         format: 'image/png',
         transparent: true,
         opacity:0.9,
-        zIndex:101,
+        //zIndex:101,
         //info_format: 'application/json',
-		//gutter:0,
-		fn_custom:  custom_fn,
+		//fadeTime:2000,
+		//gutter:0,		
 		proxy_url:'http://xs-msv:81/services/proxy',
         GetFeatureInfo:{  
 			/*ajax:function(url,type,success,error)
@@ -127,6 +83,34 @@ new L.tileLayer.wms.featureInfo
                     }    
     ,attribution:'Тестовый слой WMS с сервисом "Что здесь?"'
 });
+			
+			
+
+var rosreestrLayer = new	L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?',
+{
+	fn_custom:
+	function(params){
+			
+			var p=
+			{ 
+				transparent:true,
+				bbox:params.bbox,
+				dpi:'96',
+				f  :'image',
+				format:'PNG32',
+				bboxSR:'102100',
+				imageSR:'102100',
+				size:[params.width,params.height].join(',')
+			};
+			
+			return p;
+		},
+	ignoreEmpty:true,
+	ignoreFeatureInfo:true,
+	proxy_url:'http://xs-msv:81/services/proxy',
+	opacity:0.55,
+	transparent:true
+});
 
 
 var testImage=new L.imageOverlay("https://stat.online.sberbank.ru/PhizIC-res/15.1/commonSkin/images/logoHeader.png",
@@ -172,7 +156,8 @@ controlMap.addTo(map);
 DGisLayer.addTo(map);
 
 
-//saumi.refreshControlLayers(controlMap);
+saumi.refreshControlLayers(controlMap);
+
 //saumi.getLayers().add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки');
 //saumi.getLayers().up('grounds');
 
