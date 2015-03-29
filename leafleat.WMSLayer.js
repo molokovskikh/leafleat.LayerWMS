@@ -385,7 +385,7 @@ var layersControlWrap=function(plugin)
 // Module object
 var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({                  
 
- 
+	_SERVICE_TIMEOUT : 100,
 //++++++++++++++++++++++++++	
 //Public Region
 //++++++++++++++++++++++++++
@@ -466,17 +466,36 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		
 		this._image=this._image||this._createImage();
 		
-        map.getPanes().overlayPane.appendChild(this._image);     
-				
 		if(this._layers&&!this._layers._map)
 			this._layers.setMap(map);
 		
+		if(this.options.ignoreEmpty)		
+		{
+			this._visible_image(false,function(){				
+				var self = this;					
+				map.getPanes().overlayPane.appendChild(this._image);
+				setTimeout(function(){self._update.call(self)},this._SERVICE_TIMEOUT);
+			});
+			return;
+		}
+		
+		map.getPanes().overlayPane.appendChild(this._image);
         this._reset();
+				
   },
   onRemove: function(map){      
 
 		if(this._loadingImage)
-			this._loadingImage(true);
+			this._loadingImage(true);				
+		
+		if(this.options.ignoreEmpty)
+		{
+			this._needFade = true;
+			this._visible_image(false,function(){
+				map.getPanes().overlayPane.removeChild(this._image);
+			});
+			return;
+		}
 		
 		map.getPanes().overlayPane.removeChild(this._image);		
   },  
@@ -531,6 +550,10 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 				
 		this.featureInfoOptions.ajax = this.featureInfoOptions.ajax?this.featureInfoOptions.ajax:this._ajax;
 		
+		
+		if(this.options.fn_custom&&(!this.defaultWmsParams.layers||L.Util.trim(this.defaultWmsParams.layers).length==0))
+			this.options.ignoreEmpty=true;
+		
 		//Обновить контрол
 		this.refreshControlLayers();
    },
@@ -576,14 +599,14 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		this._update(true);	   
     },
 	_moveend: function (e) {				 
-	  if(!this._bounds.contains(this._map.getBounds()))
+	  if(this._map&&this._bounds&&!this._bounds.contains(this._map.getBounds()))
 	  {		
 		this._update(true);	  
 	  }
     },
     _resize:function()
     { 
-	   if(!this._bounds.contains(this._map.getBounds())||L.DomUtil.hasClass(this._image, 'leaflet-tile-loaded-error'))
+	   if((this._map&&this._bounds&&!this._bounds.contains(this._map.getBounds()))||(this._image&&L.DomUtil.hasClass(this._image, 'leaflet-tile-loaded-error')))
 	   {		
 		 this._update(true);	  
 	   }
@@ -875,12 +898,12 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 							if(!this._layers.isEmpty())
 							{				
 								var self = this,
-								   _visible = function(){
+								   _visible = function(){									
 									self._visible_image(true,function(){ self._needFade = !self._needFade })
 									};
 									
 								if(self._needFade)									
-									setTimeout(_visible,200);
+									setTimeout(_visible,this._SERVICE_TIMEOUT);
 								else								
 									_visible.call(self);								
 							}
@@ -923,13 +946,17 @@ _visible_image:function(show,callback)
 		v=show?'visible':'hidden';
 		//Если состояния различны то выполним действие показ/скрытие
 		if(c!=v)
-		{
+		{			
+				this._image.style.visibility = v;				
+				this._image.style.opacity=show?this.options.opacity||1:0;
+			/*
 			if(show) //Если требуется показать
 			{	
 				//Покажем элемент
 				this._image.style.visibility = v;
 				//Установим прозрачность > 0
 				this._image.style.opacity=this.options.opacity||1;
+				
 			}
 			else
 			{					
@@ -937,7 +964,9 @@ _visible_image:function(show,callback)
 				this._image.style.opacity=0;
 				//Скроем элемент
 				this._image.style.visibility = v;				
-			}					
+				
+			}
+		*/
 			return true;
 		} 
 	
@@ -950,7 +979,22 @@ _visible_image:function(show,callback)
 		var sec = (this.options.fadeTime/1000).toString();
 		
 		//Обработчики анимации
-		var transitionEnd_Hide = function(e)
+		var 
+		clear_transitionEnd=function(t){
+			var tr_es=t._transition_events||[];
+			//Очистим обработчики анимации
+			for(var te=0;te<tr_es.length;te++)
+			{			
+				if(tr_es[te].fn)
+					L.DomEvent.off(t, L.DomUtil.TRANSITION_END,tr_es[te].fn,tr_es[te]);		
+			}
+			tr_es.splice(0,tr_es.length);
+			//Запишем новый обработчик
+			tr_es.push(tObj);
+		
+			t._transition_events = tr_es;
+		},
+		transitionEnd_Hide = function(e)
 		{
 			//Для факта скрытия будем отслеживать visibility
 			if(e.propertyName.indexOf('visibility') >= 0)
@@ -969,7 +1013,7 @@ _visible_image:function(show,callback)
 							L.DomEvent.off(img,L.DomUtil.TRANSITION_END,this.fn,this);
 							this.fn=null;
 					}
-					
+					clear_transitionEnd(img);
 					if(typeof this.callback==='function')		
 						this.callback.call(this.context);	
 				}
@@ -993,6 +1037,8 @@ _visible_image:function(show,callback)
 							L.DomEvent.off(img,L.DomUtil.TRANSITION_END,this.fn,this);
 							this.fn=null;
 						}
+						
+						clear_transitionEnd(img);
 						if(typeof this.callback==='function')		
 							this.callback.call(this.context);					
 				}
@@ -1011,10 +1057,11 @@ _visible_image:function(show,callback)
 		var fnTransitionEnd = show?transitionEnd_Show:transitionEnd_Hide,
 			tObj = { context:this,show:show,callback:callback,fn:fnTransitionEnd };
 		
+		clear_transitionEnd(this._image);
 		
 		//Если требуется скрытие картинки, но она уже скрыта и прозрачность 0, то установим только видимость
 		//Это необходимо для того, чтобы отработал обработчик анимации
-		if(!show&&this._image.style.opacity==0&&this._image.style.visibility == 'hidden')
+		/*if(!show&&this._image.style.opacity==0&&this._image.style.visibility == 'hidden')
 		{			
 			this._image.style.visibility = 'visible';
 			//Поставим задержку по окончании которой проверим, выполнился ли обработчик анимации			
@@ -1028,12 +1075,14 @@ _visible_image:function(show,callback)
 				}
 			},this.options.fadeTime+100);
 		}
-		
+		*/
 		//Поставим обработчик окончания анимации
 		L.DomEvent.on(this._image, L.DomUtil.TRANSITION_END,fnTransitionEnd, tObj);				
 		
 		//Установим анимацию с заданным интервалом
-		this._image.style[L.DomUtil.TRANSITION]=show?'opacity '+sec+'s linear,visibility 0s 0s':'opacity '+sec+'s linear,visibility 0s '+sec+'s';
+		//this._image.style[L.DomUtil.TRANSITION]=show?'opacity '+sec+'s linear,visibility 0s 0s':'opacity '+sec+'s linear,visibility 0s '+sec+'s';
+		this._image.style[L.DomUtil.TRANSITION]=show?'opacity '+sec+'s linear,visibility 0s':'opacity '+sec+'s linear,visibility '+sec+'s';
+		
 		
 		//Если установка opaсity и visibility завершилась не удачно, то выполним callback
 		if(!fn_show.call(this,show))
@@ -1066,7 +1115,11 @@ _visible_image_state:function()
 //Определить необходимость отложенного показа
 _lazy_show:function()
 {	
-	var layers = this._layers._parse();	
+	var layers = this._layers._parse();
+	
+	if(this.options.ignoreEmpty)
+		return true;
+	
 	//Если запрошен 1 слой, и он не указан в url, изображения, то отложенный показ
 	return  layers.length==1&&!(new RegExp('layers\\s*\\=\\s*.*'+layers[0],'i').test(this._image.src));
 },
@@ -1076,13 +1129,24 @@ _has_changed:function()
 	
 	var _url=decodeURIComponent(this._image&&this._image.src&&this._image.src.indexOf('http')>=0?this._image.src:'');
 
-	if(this._image&&this._image._bounds_map)
+	if(this._image&&this._image._bounds_map&&this._map)
 	{
-		if(!this._map.getBounds().contains(this._image._bounds_map))
+		if(!this._map.getBounds().equals(this._image._bounds_map))
 			return true;
 		if(this._map.getZoom()!=this._image._zoom)
 			return true;
 	}
+	
+	if(this.options.ignoreEmpty)
+	{
+		this._needFade = true;
+			
+		if(_url.length==0||(this._last_url&&decodeURIComponent(this._last_url)!=_url))
+			return true;
+		
+		return false;
+	}
+	
 	return !(new RegExp('layers\\s*\\=\\s*'+this.defaultWmsParams.layers,'i').test(_url));
 },
 
@@ -1238,7 +1302,7 @@ _update:function(force)
 					}
 					
 					 context._ajax.call(context,context.options.proxy_url+"?"+p.url,p.dataType||p.type,p.success,p.error,syncObj);
-					},100);
+					},this._SERVICE_TIMEOUT);
 		return;
 	}
 	else		
@@ -1384,11 +1448,18 @@ _update:function(force)
 			requestParams = this.options.fn_custom.call(this,requestParams);
 		
 		
+		
+		
+		var urlMap = this._url +L.Util.getParamString(requestParams, this._url, this.options.uppercase)
+		
 		//Запомним текущую загружаемое изображение
 		this._loading_img = img;
 		
+		if(this.options.ignoreEmpty)
+			this._last_url = urlMap;
+		
 		//Загрузка изображения
-		img.src=this._url +L.Util.getParamString(requestParams, this._url, this.options.uppercase);
+		img.src=urlMap;
 		
 	},
   

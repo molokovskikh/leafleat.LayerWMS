@@ -105,7 +105,8 @@ var rosreestrLayer = new	L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/serv
 			
 			return p;
 		},
-	ignoreEmpty:true,
+	//fadeTime:1000,
+	//ignoreEmpty:true,
 	ignoreFeatureInfo:true,
 	proxy_url:'http://xs-msv:81/services/proxy',
 	opacity:0.55,
