@@ -3,9 +3,9 @@ var urlWms= //'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
 
 
 var saumi = 
-//    new L.TileLayer.WMS//
+    new L.WMSLayer
 //new L.wmsLayer
-new L.tileLayer.wms.featureInfo
+//new L.tileLayer.wms.featureInfo
 (urlWms, {
 	     layers:'2gis,grounds,buildings,streets',
         //layers: '04C9E7CE82C34172910ACDBF8F1DF49A',
@@ -120,23 +120,8 @@ new L.LatLngBounds(new L.LatLng(45.704553, 37.619781),new L.LatLng(55.794553, 49
 ,{animate:false}
 );
 
-/*
-var h=800,w=1000,nh=780,nw=900;
-var s =saumi._calcCorrectSize(w,h,nh,nw);
-debugger
-w= 3801;
-h= 1926;
-nw= 2048;
-nh= 1926;
-s =saumi._calcCorrectSize(w,h,nh,nw);
-*/
-
-
-var osmLayer = new L.TileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-var DGisLayer = new L.TileLayer('http://tile{s}.maps.2gis.ru/tiles?x={x}&y={y}&z={z}',{subdomains:[0,1,2,3,4,5]});
-var yandexLayer = new L.Yandex();
-var googleLayer = new L.Google('ROADMAP');
-
+//var yandexLayer2 = new L.Yandex();
+//var googleLayer2 = new L.Google('ROADMAP');
 
 map = new L.Map('map', {
         center: new L.LatLng(55.754553, 37.619781),
@@ -148,15 +133,19 @@ map = new L.Map('map', {
 });
 
 
-var controlMap = L.control.layers(
-{'2ГИС':DGisLayer, "Yandex":yandexLayer, "Google":googleLayer,'OSM':osmLayer},
-{'Росреестр':rosreestrLayer}
-);
-controlMap.addTo(map);
+ L.control.layers(
+{
+ '2ГИС':L.TileLayer.DGis.create(null,{subdomains:[0,1,2]}).addTo(map), 
+ 'Яндекс':L.TileLayer.Yandex.create(), 
+ 'Google':L.TileLayer.Google.create(),
+ 'OpenStreetMap':L.TileLayer.Osm.create(),
+ }
+,{'Росреестр':rosreestrLayer}
+)
+.addTo(map);
 
-DGisLayer.addTo(map);
-
-
+debugger
+var controlMap = L.control.layers().addTo(map);
 saumi.refreshControlLayers(controlMap);
 
 //saumi.getLayers().add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки');

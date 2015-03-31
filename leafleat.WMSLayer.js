@@ -350,7 +350,7 @@ var layersControlWrap=function(plugin)
 		},
 		this.setMap=function(map)
 		{
-			var empty = function() {};
+			var empty = L.Util.falseFn;//function() {};
 			for(var l=0;l<this._listLayers.length;l++)
 			{
 				this._listLayers[l]._context = this;
@@ -479,9 +479,17 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 			return;
 		}
 		
+		if(!this._controlLayers)
+		{
+			debugger
+			this.refreshControlLayers();
+		}
+		
+		
 		map.getPanes().overlayPane.appendChild(this._image);
         this._reset();
 				
+		
   },
   onRemove: function(map){      
 
