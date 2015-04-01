@@ -41,25 +41,45 @@ nsTile.Yandex = nsTile.extend({
     },
 	_overrideFn:function(name,params)
 	{				 
-		var protoTile  = nsTile.prototype;
+		var leftPointTestProps = ['_initialTopLeftPoint','_pixelOrigin'],
+			protoTile  = nsTile.prototype;
 				
 		 if(!(name in protoTile))
 			 return;
 		 
+		 
+		var fn_map = function(a,b,c)
+		{
+			for(var i=0;i<b.length;i++)
+				if(b[i] in a)			
+					a[b[i]]=c(b[i],a[b[i]]);			
+		};
+		 
 		 var fn = protoTile[name],
 			 m = this._map,
 			 o = m&&m.options,
+			 z = m&&m.getZoom(),
 			 yandexCrs = L.CRS.EPSG3395,
 			 old_crs = o&&o.crs,
-			 old_po  = m&&m._pixelOrigin;
+			 old_po  = {};
 				
-		if(m) m._pixelOrigin = yandexCrs.latLngToPoint(old_crs.pointToLatLng(m._pixelOrigin,m.getZoom()),m.getZoom()).round();		
+		if(m) 
+			  fn_map(m,leftPointTestProps,function(key,value){
+				 old_po[key]=value;
+				 return yandexCrs.latLngToPoint(old_crs.pointToLatLng(value,z),z).round();				 
+			  });
+			  
+		//if(m) m._pixelOrigin = yandexCrs.latLngToPoint(old_crs.pointToLatLng(m._pixelOrigin,z),z).round();		
 		
 		if(o) o.crs = yandexCrs;
 		 
 		var r = fn&&fn.apply(this,params||arguments.callee.caller.arguments);
 		
-		if(m) m._pixelOrigin = old_po;
+		
+		if(m) 
+			fn_map(m,leftPointTestProps,function(key,value){ return old_po[key]; });
+		
+		//if(m) m._pixelOrigin = old_po;
 		if(o) o.crs = old_crs;
 		
 		return r;
