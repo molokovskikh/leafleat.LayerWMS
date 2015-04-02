@@ -70,18 +70,23 @@ var layersControlWrap=function(plugin)
 			if(typeof this.context.options.layers!='undefined')
 				this.context.options.layers = this.context.defaultWmsParams.layers;
 			
+			this._isEmpty = layers.length==0;
+			
 			//Вызовем событие изменения параметров у слоя
 			if(this.context._map&&prev!=this.context.defaultWmsParams.layers)
-			{
-				this.context.fire('layers_changed',
-				{ 	
+			{				
+				var eventArgs={
 					before:prev,//До изменения
 					after: this.context.defaultWmsParams.layers,//После изменения
 					visibility: layers.length //Количество видимых слоев
-				});
+				};
+				
+				if(layers.length==1&&this._listLayers[this.context.defaultWmsParams.layers].base)
+					eventArgs.isbase=true;
+					
+				this.context.fire('layers_changed',eventArgs);
 			}
-			
-			this._isEmpty = layers.length==0;
+						
 		},
 		//Поиск вхождения в массив
 		this._contains=function(a, obj) {
@@ -192,7 +197,7 @@ var layersControlWrap=function(plugin)
 				
 				if(!sLayer)
 				{
-					sLayer = new surrogateLayer(name,display);
+					sLayer = new surrogateLayer(name,display,base);
 					if(!this._listLayers[name])
 					{
 						this._listLayers.push(sLayer);
@@ -202,24 +207,23 @@ var layersControlWrap=function(plugin)
 				}
 								
 				sLayer.visible = true;
-								
+				sLayer.base = (base||sLayer.base)===true;
+				
 				//Если WMS слой еще не добавлен на карту, сделаем это
 				if(!this.context._map&&this._map)
 					this.context.addTo(this._map);
 				
 				var control = this.context._controlLayers;
 				if(control)
-				{
-					base = base===true;
-					if(base)
+				{					
+					if(sLayer.base)
 						control.addBaseLayer(sLayer,sLayer.display);
 					else
 						control.addOverlay(sLayer,sLayer.display);
 				}
 								
 				sLayer.display=display||sLayer.display;
-				
-				
+								
 				sLayer.visible = this.checked(true,this._map,sLayer)==true;
 				
 				this._replicateToWMS();								
@@ -241,9 +245,19 @@ var layersControlWrap=function(plugin)
 				if(pos>=0)
 				{					
 					layers.splice(pos, 1);
-					sLayer.visible = false;					
-					this._toStr(layers);					
-				}
+					sLayer.visible = false;
+					this._toStr(layers);
+				} else
+					if(sLayer.base)
+					{						
+						sLayer.visible = false;
+						
+						if(this.context._image&&this.context._image.parentNode!=null)
+						{
+							this.context.fire('layers_changed');
+						}
+					}
+						
 			}
 		},
 		
@@ -441,6 +455,10 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 	{
 		this._url = url;
 		
+		this.defaultWmsParams = L.Util.extend({},this.defaultWmsParams);
+		this.defaultParamsGetMap = L.Util.extend({},this.defaultParamsGetMap);
+		this.defaultParamsGetFeatureInfo = L.Util.extend({},this.defaultParamsGetFeatureInfo);
+		
 		if(featureInfoOptions)
 			this._replaceProperties(featureInfoOptions,this.defaultParamsGetFeatureInfo);
 		
@@ -496,16 +514,20 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		if(this._loadingImage)
 			this._loadingImage(true);				
 		
+		var oPane = map.getPanes().overlayPane;
+		
 		if(this.options.ignoreEmpty)
 		{
 			this._needFade = true;
 			this._visible_image(false,function(){
-				map.getPanes().overlayPane.removeChild(this._image);
+				if(this._image.parentNode===oPane)
+					oPane.removeChild(this._image);
 			});
 			return;
 		}
 		
-		map.getPanes().overlayPane.removeChild(this._image);		
+		if(this._image.parentNode===oPane)
+			oPane.removeChild(this._image);		
   },  
   
   getAttribution: function () {
@@ -590,6 +612,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 			}
 			this._controlLayers = control;
 		}
+		return this;
 	},	
 	//Установка Z-индекса
 	setZIndex: function (zIndex) {
@@ -655,7 +678,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
    
    //Замена свойств, которые уже есть у приемника
 	_replaceProperties: function(src,dst)
-	{
+	{		
 		for (var p in src) {
 			if(dst.hasOwnProperty(p))
 				dst[p] = src[p];
@@ -696,6 +719,16 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 	_onLayersChanged:function(e)
 	{						
 		this._needFade = (e.visibility==0&&e.before!='')||(e.visibility==1&&e.after!='');
+		
+		
+		if(this._image&&this._image.parentNode)
+		{
+			if(e.isbase)
+				L.DomUtil.toBack(this._image);
+			else
+				L.DomUtil.toFront(this._image);
+		}
+		
 		/*
 		L.popup()
 		.setLatLng(this._map.getBounds().pad(-0.3).getNorthWest())
