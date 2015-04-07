@@ -24,24 +24,18 @@
 //Add hook to class L.TileLayer
 nsTile.addInitHook(L.Util.extend(
 //Hook for CRS-option TileLayer
-function(){
+function over(){
 	
 	if(this.options.crs){		
 		var self = this,
 			objSync={},
-			fn_override=arguments.callee.fn_list||['_reset','_update'],
-			leftPointTestProps = arguments.callee.leftPoint_propNames||['_initialTopLeftPoint','_pixelOrigin'],
-			override,
-			f,fn_name;
+			fn_override=over.fn_list||['_reset','_update'],
+			leftPointTestProps = over.leftPoint_propNames||['_initialTopLeftPoint','_pixelOrigin'],
+			overrideBuilder=function ()
+			{
+				return function context_fn () {
 					
-		for(f in fn_override){
-			fn_name = fn_override[f];			
-			if(fn_name in self){
-				
-				override=function() {
-					
-					var context_fn = arguments.callee,
-						params = !!objSync.running?context_fn.caller.arguments:arguments;
+					var params = !!objSync.running?context_fn.caller.arguments:arguments;
 					
 					if(!!!objSync.running)
 					{
@@ -81,7 +75,17 @@ function(){
 					}
 					
 					return context_fn.original.apply(self,params);
-				};				
+				}
+			},
+			override,
+			f,fn_name;
+					
+		
+					
+		for(f in fn_override){
+			fn_name = fn_override[f];			
+			if(fn_name in self){				
+				override=overrideBuilder();				
 				override.original=self[fn_name];
 				self[fn_name]=override;
 			}

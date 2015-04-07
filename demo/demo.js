@@ -2,14 +2,42 @@ var urlWms= //'http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ';
 		    'http://xs-msv:81/services/gis';
 
 
-var saumi = 
-    new L.WMSLayer
-//new L.wmsLayer
-//new L.tileLayer.wms.featureInfo
-(urlWms, {
-	     layers:'2gis,grounds,buildings,streets',
-        //layers: '04C9E7CE82C34172910ACDBF8F1DF49A',
-		//layers_alias:'Космоснимки',
+var 
+
+ loading = function(end)
+ {
+	if(this._map)
+	{
+		
+		var context_fn = arguments.callee,
+			q = context_fn.query||[],
+			c   = this._map.getContainer(),
+			sc  = c.style.cursor||'default',
+			scs = !end?'progress':'default',
+			i;
+		
+		context_fn.query=q;
+		
+		if(!end){
+			if(q.indexOf(this)<0)
+				q.push(this)
+		}
+		else {
+			if((i=q.indexOf(this))>=0)			
+				q.splice(i,1)			
+		}
+		
+		if(sc!=scs)
+		{			
+			if((end&&q.length==0)||!end)			
+				c.style.cursor = scs;
+		}
+	}
+ },
+	saumi = 
+    new L.WMSLayer(urlWms, {		
+		loading:loading,
+	    layers:'2gis,grounds,buildings,streets',
         version:'1.3.0',        
         format: 'image/png',
         transparent: true,
@@ -81,12 +109,12 @@ var saumi =
             //,templateContent:'<h2>{Title}</h2><p>{Description}</p><p>{Layer}</p>'
             ,classGroup:'mygroup',classList:'mylist'
                     }    
-    ,attribution:'Тестовый слой WMS с сервисом "Что здесь?"'
+    //,attribution:'Тестовый слой WMS с сервисом "Что здесь?"'
 });
 			
 			
 
-var rosreestrLayer = new	L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?',
+var rosreestrLayer = new L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?',
 {
 	fn_custom:
 	function(params){
@@ -120,35 +148,50 @@ new L.LatLngBounds(new L.LatLng(45.704553, 37.619781),new L.LatLng(55.794553, 49
 ,{animate:false}
 );
 
-//var yandexLayer2 = new L.Yandex();
-//var googleLayer2 = new L.Google('ROADMAP');
 
 map = new L.Map('map', {
         center: new L.LatLng(55.754553, 37.619781),
 		//center: new L.LatLng(45, -93.2),
-        layers: [testImage],
+        //layers: [testImage],
         zoom: 6,
         zoomControl: true
 		//,animate:false
 });
 
 
+var controlMapBase = 
  L.control.layers(
 {
  '2ГИС':L.TileLayer.DGis.create(null,{subdomains:[0,1,2]}).addTo(map), 
  'Яндекс':L.TileLayer.Yandex.create(), 
  'Google':L.TileLayer.Google.create(),
- 'OpenStreetMap':L.TileLayer.Osm.create(),
+ 'OpenStreetMap':L.TileLayer.Osm.create() 
  }
 ,{'Росреестр':rosreestrLayer}
 )
-.addTo(map);
+.addTo(map),
+l=L.WMSLayer.create('http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ',{loading:loading}),
+	layersKosmo = l
+	.addTo(map)
+	.refreshControlLayers(controlMapBase)
+	.getLayers();
 
-debugger
+window._tester = {
+	r:rosreestrLayer,
+	k:l,
+	s:saumi
+};
+
+layersKosmo.add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки',true);
+
+l.name='Космоснимки';
+saumi.name='Сауми';
+
 var controlMap = L.control.layers().addTo(map);
 saumi.refreshControlLayers(controlMap);
 
-//saumi.getLayers().add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки');
+
+//
 //saumi.getLayers().up('grounds');
 
 
