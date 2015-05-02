@@ -165,26 +165,29 @@ var controlMapBase =
  '2ГИС':L.TileLayer.DGis.create(null,{subdomains:[0,1,2]}).addTo(map), 
  'Яндекс':L.TileLayer.Yandex.create(), 
  'Google':L.TileLayer.Google.create(),
- 'OpenStreetMap':L.TileLayer.Osm.create() 
+ 'OpenStreetMap':L.TileLayer.Osm.create(),
+ 'Космоснимки':L.TileLayer.Kosmosnimki.create()  
  }
 ,{'Росреестр':rosreestrLayer}
 )
-.addTo(map),
-l=L.WMSLayer.create('http://maps.kosmosnimki.ru/TileService.ashx/apikeyL5VW1QBBHJ',{loading:loading}),
+.addTo(map);/*,
+
+	l=L.WMSLayer.create('http://maps.kosmosnimki.ru/TileService.ashx/apikey=L5VW1QBBHJ',{loading:loading}),
 	layersKosmo = l
-	.addTo(map)
+	.addTo(map);
 	.refreshControlLayers(controlMapBase)
 	.getLayers();
-
+*/
 window._tester = {
 	r:rosreestrLayer,
-	k:l,
+	m:map,
+	//k:l,
 	s:saumi
 };
 
-layersKosmo.add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки',true);
+//layersKosmo.add('04C9E7CE82C34172910ACDBF8F1DF49A','Космоснимки',true);
 
-l.name='Космоснимки';
+//l.name='Космоснимки';
 saumi.name='Сауми';
 
 var controlMap = L.control.layers().addTo(map);

@@ -133,6 +133,17 @@ nsTile.Google = nsTile.extend({
    initialize: function(url,options){
 		 return nsTile.prototype.initialize.call(this,url||'http://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}',options);
     }
+}),
+
+//Kosmosnimki
+nsTile.Kosmosnimki = nsTile.extend({
+   statics:{ create :function (url,options) {return new nsTile.Kosmosnimki(url,options);}},  
+   initialize: function(url,options){
+	   	var sd = {crs:L.CRS.EPSG3395},
+			defaultOptions = (options&&L.Util.extend({},sd,options))||sd,
+			defaultLayer= defaultOptions.layerName||defaultOptions.layer||'04C9E7CE82C34172910ACDBF8F1DF49A';
+		return nsTile.prototype.initialize.call(this,url||'http://maps.kosmosnimki.ru/TileService.ashx?Request=GetTile&layerName='+defaultLayer+'&crs='+defaultOptions.crs.code+'&x={x}&y={y}&z={z}',defaultOptions);
+    }
 })
 
 	
