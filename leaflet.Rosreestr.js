@@ -18,6 +18,9 @@
 
         if (typeof this.L.Control.Search === 'undefined')
             throw 'Leaflet.ControlSearch must be loaded first!';
+		
+		if (typeof this.jQuery === 'undefined')
+            throw 'jQuery must be loaded first!';
         // Namespace
         factory(this.L.Control);
     }
@@ -41,7 +44,7 @@
                 // support dotted format: 'prop.subprop.title'
                 callTip: null,				//function that return row tip html node(or html string), receive text tooltip in first param
                 filterJSON: null,			//callback for filtering data to _recordsCache
-                minLength: 1,				//minimal text length for autocomplete
+                minLength: 3,				//minimal text length for autocomplete
                 initial: true,				//search elements only by initial text
                 autoType: true,				//complete input with first suggested result and select this filled-in text.
                 delayType: 400,				//delay while typing for show tooltip
@@ -53,88 +56,139 @@
                 //TODO add option for persist markerLoc after collapse!
                 autoCollapseTime: 1200,		//delay for autoclosing alert and collapse after blur
                 zoom: null,					//zoom after pan to location found, default: map.getZoom()
-                text: 'кадастровый номер, адрес, координаты...',			//placeholder value
-                textCancel: 'Отмена',		//title in cancel button
+                text: 'Кадастровый номер, адрес, координаты...',			//placeholder value
+				textExpand:'Найти',
+                textCancel: 'Очистить',		//title in cancel button
                 textErr: 'Поиск не дал результатов',	//error message
                 position: 'topleft',
                 animateLocation: true,		//animate a circle over location found
                 circleLocation: true,		//draw a circle in location found
                 markerLocation: false,		//draw a marker in location found
                 markerIcon: new L.Icon.Default()//custom icon for maker location
-            },
+            },		
         initialize: function (options) {
 
             L.Util.setOptions(this, options);
-			this.options.callTip = this._callTip;
-			this.options.filterJSON = this._filterJSON;
-            this.options.callData = this._search;
+			
+			this.options.callTip = this._buildProxyFn('_callTip');
+			this.options.filterJSON = this._buildProxyFn('_filterJSON');
+            this.options.callData =  this._buildProxyFn('_search');
 			nsControl.Search.prototype.initialize.call(this,this.options);
 			
 			this._cache=null;
 			this._pkey=this.options.propertyLoc||'loc';
 			this._pval=this.options.propertyName||'title';
 			this._ptype='_sourceType';
+			
+			
         },
+		
         onAdd:function(map){
             var container = nsControl.Search.prototype.onAdd.call(this,map);
-           //http://www.jsfiddler.net/yk6nkwqu/44
+			map.on('searchcomplete',function(e){
+				debugger
+			});
+			           
             this.on('search_locationfound',function(e){
-                var obj = this._getObjectFromCache(text);
-				if(_obj[this._ptype]=='rosreestr'){		
-					map.fire('searchcomplete',{
-						mapObjects: [
+                debugger
+				var obj = this._getObjectFromCache(e.text);
+				if(obj&&this._ptype in obj) {
+					if(obj[this._ptype]=='rosreestr'){		
+						map.fire('searchcomplete',{
+							mapObjects: [
+											{
+												kadastrNo:obj.CAD_NUM,
+												latLng:obj[this._pkey],
+												attributesJSON: obj._getJSON?obj._getJSON():JSON.stringify(_extendWithoutCircular({},obj))
+											}
+										]
+	/*				
+						map.fire('searchcomplete',
+							{
+								mapObjects:
+									[
 										{
-											kadastrNo:_obj.CAD_NUM,
-											latLng:_obj[this._pkey],
-											attributesJSON: JSON.stringify(_obj)
+											kadastrNo:'42:30',
+											latLng: {lat:55,lng:34},
+											attributesJSON:'{desc:"Описание",name:"Название",price:"Стоимость"}'
+										},
+										{
+											kadastrNo:'42:31',
+											latLng: {lat:54,lng:36},
+											attributesJSON:'{desc:"Описание2",name:"Название2",price:"Стоимость2"}'
 										}
 									]
-/*				
-					map.fire('searchcomplete',
-						{
-							mapObjects:
-								[
-									{
-										kadastrNo:'42:30',
-										latLng: {lat:55,lng:34},
-										attributesJSON:'{desc:"Описание",name:"Название",price:"Стоимость"}'
-									},
-									{
-										kadastrNo:'42:31',
-										latLng: {lat:54,lng:36},
-										attributesJSON:'{desc:"Описание2",name:"Название2",price:"Стоимость2"}'
-									}
-								]
+							});
+	*/						
 						});
-*/						
+						debugger
+					
+					}
 				}
-                debugger
-            });
+			});
 
             return container;
         },
         onRemove:function(map){
             nsControl.Search.prototype.onRemove.call(this,map);
         },
+		expand:function(){						
+			if(this.options.textExpand&&this.options.textExpand!==this.options.text)
+				this._button.title = this.options.textExpand;		
+			nsControl.Search.prototype.expand.apply(this,arguments);
+		},
+		collapse:function(){
+			
+			nsControl.Search.prototype.collapse.apply(this,arguments);
+			
+			if(this.options.textExpand&&this.options.textExpand!==this.options.text)
+				this._button.title = this.options.text;
+		},
 		
+		_buildProxyFn:function(name){
+			var self=this,
+				fn=self[name];
+			if(fn)	
+			return function() {				
+				return fn.apply(self,arguments);
+			};
+		},
 		_filterJSON:function(jsonraw){
-			this._cache = jsonraw;
+			this._cache = this._buildCache(jsonraw);
 			return this._defaultFilterJSON(jsonraw);
 		},
-		_getObjectFromCache(key){
-			if(this._cache)
-				for(var i=0;i<this._cache.length;i++){        
-					if(this._cache[i].title===text){
+		_buildCache:function(jsonraw){
+			if(jsonraw instanceof Array){
+				var c={},i,k;
+				for(i =0;i<jsonraw.length;i++){					
+					if((k = jsonraw[i][this._pval]))
+						c[k]=jsonraw[i];
+				}
+				return c;
+			}
+		},
+		_getObjectFromCache:function(key){
+			if(this._cache){				
+			
+			  if(this._cache instanceof Array) {
+				for(var i=0;i<this._cache.length;i++){
+					if(this._cache[i].title===key){
 						return _cache[i];						
 					}
 				}
+			  } else {
+				  return this._cache[key];
+			  }
+			  
+			}
 		},
 		_callTip:function(text,val){
+			//debugger
 			var tooltipNode = L.DomUtil.create('div','rosreestr-search-tip'),
 			obj=this._getObjectFromCache(text);		
 
 			if(obj&&obj._sourceType){
-				debugger
+				//debugger
 				var html='';
 				if(obj._sourceType=='rosreestr'){
 					html=obj._getText?obj._getText():text;
@@ -156,6 +210,19 @@
 				tooltipNode.innerHTML = text;    
 
 			return tooltipNode;
+		},
+		
+		_extendWithoutCircular:function (){
+						var dest=arguments.length>0?arguments[0]:{},i, j, len, src;
+
+                        for (j = 1, len = arguments.length; j < len; j++) {
+                            src = arguments[j];
+                            for (i in src) {
+								if(!(i.indexOf('_')==0||src[i] instanceof  Element||typeof src[i]=='function'))
+									dest[i] = src[i];
+                            }
+                        }
+                        return dest;
 		},
 		
 		_search:function(text,fnCallback){
@@ -188,6 +255,10 @@
 				return /^([\d\x20]+\:?){1,6}$/i.test(s);
 			}
 
+			
+			function getJSON() {										
+					return JSON.stringify(controlSearch._extendWithoutCircular({},this));
+			}
 
 			function findByKadastrNo(s){
 				var urlQuery = 'http://maps.rosreestr.ru/arcgis/rest/services/Cadastre/CadastreSelected/MapServer/1/query?f=json&where=PKK_ID%20like%20%27'+s.replace(/\:/g,'')+'%25%27&&orderByFields=PKK_ID&outFields=*',
@@ -220,11 +291,12 @@
 
 				function getText() {
 
-					if(this._address&&this._address.OBJECT_ADDRESS)
+					if(this._address&&this._address.OBJECT_ADDRESS&&L.Util.trim(this._address.OBJECT_ADDRESS).length>0)
 						return this.CAD_NUM+' - '+this._address.OBJECT_ADDRESS;
 						
 					return this.CAD_NUM;
 				}
+								
 
 				$.ajax(urlQuery,
 				{
@@ -247,7 +319,7 @@
 							dst._mineKeys={XC:src.XC,YC:src.YC,CAD_NUM:src.CAD_NUM};
 							$.extend(
 									dst,
-									{_fieldAliases:data.fieldAliases,_fnAlias:fnAlias},
+									{_fieldAliases:data.fieldAliases,_fnAlias:fnAlias,_getJSON:getJSON},
 									src,
 									{
 									 _mine:function(){
@@ -264,14 +336,15 @@
 														 self._services=[];
 														 for(var f=0;f<data.features.length;f++){
 															 var attr=data.features[f].attributes,
-																 service = $.extend({ _fieldAliases:data.fieldAliases, _fnAlias:fnAlias },attr);
+																 service = $.extend({ _fieldAliases:data.fieldAliases, _fnAlias:fnAlias,_getJSON:getJSON },attr);
 																 self._services.push(service);
 														 }
 													 }                             
 												 });
 												 
 
-											   if(self._mineKeys.CAD_NUM)                         $.ajax('http://maps.rosreestr.ru/arcgis/rest/services/Cadastre/CadastreSelected/MapServer/exts/GKNServiceExtension/online/parcel/find?f=json&cadNum='+self._mineKeys.CAD_NUM,{dataType:'json'})
+											   if(self._mineKeys.CAD_NUM)                         
+												 $.ajax('http://maps.rosreestr.ru/arcgis/rest/services/Cadastre/CadastreSelected/MapServer/exts/GKNServiceExtension/online/parcel/find?f=json&cadNum='+self._mineKeys.CAD_NUM,{dataType:'json'})
 												 .then(function(data)
 												 {                                      
 													 if(data.error)
@@ -281,7 +354,7 @@
 														 for(var f=0;f<data.features.length;f++){ 
 															 var attr=data.features[f].attributes;
 															 if(self._mineKeys.CAD_NUM===attr.CAD_NUM){                                        
-																 $.extend(self,{ _address: $.extend({ _fieldAliases:data.fieldAliases, _fnAlias:fnAlias},attr),_getText:getText});
+																 $.extend(self,{ _address: $.extend({ _fieldAliases:data.fieldAliases, _fnAlias:fnAlias,_getJSON:getJSON},attr),_getText:getText});
 																 if(self._innerElement&&self._innerElement.innerHTML){
 																	 self._innerElement.innerHTML=self._getText();
 																 }
@@ -325,7 +398,7 @@
 							for(i=0;i<data.length;i++){
 								s=data[i];                    
 								//if(d.type=='city') {
-								d={};                 
+								d={_getJSON:getJSON};                 
 								d[ptype]='nominatim';
 								d[pkey]=L.latLng(s.lat,s.lon);
 								d[pval]=s.display_name;
@@ -373,7 +446,7 @@
 									for(var iObj=0;iObj<meta.geocoder.results;iObj++) {
 										src = objects.get(iObj);
 										if(src){
-											dst = $.extend({},src.properties.getAll());// L.Util.extend({},src.properties.getAll());                        
+											dst = $.extend({_getJSON:getJSON},src.properties.getAll());// L.Util.extend({},src.properties.getAll());                        
 											dst[ptype]='yandex';
 											dst[pval]=src.properties.get('text');
 											dst[pkey]=L.latLng(src.geometry.getCoordinates());                        
@@ -407,7 +480,7 @@
 				}
 
 				if(typeof ymaps==='undefined'){
-					return $.ajax('//api-maps.yandex.ru/2.1/?lang=ru_RU&load=geocode',{dataType: 'script'})
+					return $.ajax('http://api-maps.yandex.ru/2.1/?lang=ru_RU&load=geocode',{dataType: 'script'})
 						   .then(result);
 				}
 
@@ -434,9 +507,8 @@
 								var res = [],i,s,d,c;
 								for(i=0;i<data.result.length;i++){
 									s=data.result[i];
-									d={};    
-									d[ptype]='2gis';
-									$.extend(d,s);
+									d=$.extend({_getJSON:getJSON},s);
+									d[ptype]='2gis';									
 									c=/^POINT\s*\(\s*(\d+(\.\d*){0,1})\s*(\d+(\.\d*){0,1})\s*\)$/i.exec(s.centroid);                                        
 									d[pkey]=L.latLng(c[3],c[1]);
 									d[pval]=s.name;
@@ -514,7 +586,7 @@
 				return result;
 			}
 
-
+/*
 			if(text&&text.length<3){
 				var result  = createDeferred();
 				result.fail(function(e){
@@ -526,7 +598,7 @@
 				result.reject();
 				return result;
 			}
-
+*/
 			if(validateKadastrNo(text)) {
 				var result=findByKadastrNo(text);
 				result.then(

@@ -156,7 +156,8 @@ map = new L.Map('map', {
         zoom: 6,
         zoomControl: true,
 		 Rosreestr:{
-
+			zoom:14,
+			markerLocation:true
         }
 		//,animate:false
 });
