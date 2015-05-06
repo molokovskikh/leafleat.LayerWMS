@@ -154,7 +154,10 @@ map = new L.Map('map', {
 		//center: new L.LatLng(45, -93.2),
         //layers: [testImage],
         zoom: 6,
-        zoomControl: true
+        zoomControl: true,
+		 Rosreestr:{
+
+        }
 		//,animate:false
 });
 
