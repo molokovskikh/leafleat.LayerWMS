@@ -45,6 +45,10 @@ var layersControlWrap=function(plugin)
 				//Скроем слой
 				this._context.remove(this.name);
 								
+			},
+			//Получить целевой слой WMS
+			getWMSLayer:function(){
+				return plugin;			
 			}
 		});
 		
@@ -476,6 +480,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		this.on('layers_changed',this._onLayersChanged,this);
     },
   onAdd: function(map){    
+		debugger
 		this._map = map;
 		this._updateCrs();
         
@@ -610,6 +615,11 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 					control.addOverlay(layer,layer.display);
 				}
 			}
+			
+			var map=this._map||control._map;
+			if(map)
+				map.fire('wmsrefreshctrllayers',{layers:layers,control:control,WMSLayer:this});
+				
 			this._controlLayers = control;
 		}
 		return this;
@@ -1307,7 +1317,7 @@ _update:function(force)
     var context=this,
 		message=syncObj.responseText;		
 	
-	//Если возникла ошибка и куазан прокси, то попробуем повторить запрос
+	//Если возникла ошибка и не указан прокси, то попробуем повторить запрос
 	if((!message||message.length==0)&&context.options.proxy_url&&!syncObj._busy)
 	{			
 		syncObj._busy = true;		
@@ -1507,9 +1517,10 @@ _update:function(force)
   
   
   
-   _getFeatureInfo: function(latlng)
+   _getFeatureInfo: function(latlng,suppressNotFound,map,layersOptional)
     {    
-        var map = this._map,
+		map = map||this._map;
+        var 
 			params=this.featureInfoOptions,
             templateContent = params.templateContent,
             propertyName= params.propertyName,
@@ -1517,8 +1528,9 @@ _update:function(force)
             point = map.latLngToContainerPoint(latlng, map.getZoom()),            
 			size = map.getSize(),
             bounds = map.getBounds(),
-			nw = this._crs.project(bounds.getNorthWest()),
-			se = this._crs.project(bounds.getSouthEast());
+			crs = this._crs||map.options.crs,
+			nw = crs.project(bounds.getNorthWest()),
+			se = crs.project(bounds.getSouthEast());
 
 		//Если не указан шаблон, и есть указанные свойства, то сгенерируем шаблон на основании списка свойств
         if((!templateContent||templateContent.length==0)&&propertyName&&propertyName.length>0)
@@ -1537,7 +1549,7 @@ _update:function(force)
 		var requestParams = L.extend(
 			{   
 				info_format:info_format,
-				query_layers:this.defaultWmsParams.layers||this.defaultWmsParams.layers,
+				query_layers:this.defaultWmsParams.layers||this.defaultWmsParams.layers||layersOptional,
 				width:  size.x,
 				height: size.y
 			},
@@ -1545,10 +1557,13 @@ _update:function(force)
 			this.defaultParamsGetFeatureInfo			
 		);		
  
-		requestParams.bbox = (this._wmsVersion >= 1.3 && this._crs === L.CRS.EPSG4326 ?  [se.y, nw.x, nw.y, se.x] : [nw.x, se.y, se.x, nw.y]).join(',');
+		requestParams.bbox = (this._wmsVersion >= 1.3 && crs === L.CRS.EPSG4326 ?  [se.y, nw.x, nw.y, se.x] : [nw.x, se.y, se.x, nw.y]).join(',');
 		requestParams[this._wmsVersion >= 1.3?'i':'x']=point.x;
 		requestParams[this._wmsVersion >= 1.3?'j':'y']=point.y;
 	
+		if(!(this._projectionKey in requestParams)){			
+			requestParams[this._projectionKey]=crs.code;
+		}
 	   
 
 		//До параметры стилей при генерации HTML
@@ -1562,7 +1577,7 @@ _update:function(force)
 		var urlBase = params.url||this._url,
 			urlFeatureInfo= urlBase + L.Util.getParamString(requestParams, urlBase, this.options.uppercase);
        
-        var showResult=function(data){
+        var showResult=suppressNotFound||function(data){
             var prepareTemplateData=function(src){
                 var dst = {};               
                 for(var p in src)
@@ -1605,10 +1620,11 @@ _update:function(force)
              {Request:'GET',Data:(requestParams.info_format==='application/json'?'json':'text')},
              function(data)
              {
-                 showResult(data);
+                showResult(data);
              },
              function(error){
-				 
+				if(typeof suppressNotFound==='function')
+					suppressNotFound(null,error);				
              });              
     }
 	

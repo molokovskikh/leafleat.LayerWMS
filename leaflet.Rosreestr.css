@@ -1,0 +1,156 @@
+.rosreestr-search-popup-content .nav {
+  
+  border-bottom-style: solid;
+  width: 100%;
+  display: inline-block;
+  
+  padding-left: 0;
+  margin-top:0;
+  margin-bottom: 0;
+  list-style: none;
+}
+
+
+.rosreestr-search-popup-content .nav > li {  
+  position: relative;
+  display: block;
+}
+.rosreestr-search-popup-content .nav > li > a {
+  position: relative;
+  display: block;
+  padding: 5px 5px;
+}
+.rosreestr-search-popup-content .nav > li > a:hover,
+.rosreestr-search-popup-content .nav > li > a:focus {
+  cursor:pointer;
+  text-decoration: none;
+  background-color: #eee;
+}
+.rosreestr-search-popup-content .nav > li.disabled > a {
+  color: #777;
+}
+.rosreestr-search-popup-content .nav > li.disabled > a:hover,
+.rosreestr-search-popup-content .nav > li.disabled > a:focus {
+  color: #777;
+  text-decoration: none;
+  cursor: not-allowed;
+  background-color: transparent;
+}
+.rosreestr-search-popup-content .nav .open > a,
+.rosreestr-search-popup-content .nav .open > a:hover,
+.rosreestr-search-popup-content .nav .open > a:focus {
+  background-color: #eee;
+  border-color: #337ab7;
+}
+.rosreestr-search-popup-content .nav .nav-divider {
+  height: 1px;
+  margin: 9px 0;
+  overflow: hidden;
+  background-color: #e5e5e5;
+}
+.rosreestr-search-popup-content .nav > li > a > img {
+  max-width: none;
+}
+.rosreestr-search-popup-content .nav-tabs {
+  border-bottom: 1px solid #ddd;
+}
+.rosreestr-search-popup-content .nav-tabs > li {
+  float: left;
+  margin-bottom: -1px;
+}
+.rosreestr-search-popup-content .nav-tabs > li > a {
+  margin-right: 2px;
+  line-height: 1.42857143;
+  border: 1px solid #EFF7F3;
+  border-radius: 4px 4px 0 0;
+  border-bottom-color: transparent;
+}
+.rosreestr-search-popup-content .nav-tabs > li > a:hover {
+  border-color: #eee #eee #ddd;
+}
+.rosreestr-search-popup-content .nav-tabs > li.active > a,
+.rosreestr-search-popup-content .nav-tabs > li.active > a:hover,
+.rosreestr-search-popup-content .nav-tabs > li.active > a:focus {
+  color: #555;
+  cursor: default;
+  background-color: #fff;
+  border: 1px solid #ddd;
+  border-bottom-color: transparent;
+  font-weight: bold;
+}
+
+/*
+
+
+.rosreestr-search-popup-content .nav-tabs.nav-justified {
+  width: 100%;
+  border-bottom: 0;
+}
+.rosreestr-search-popup-content .nav-tabs.nav-justified > li {
+  float: none;
+}
+.rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
+  margin-bottom: 5px;
+  text-align: center;
+}
+.rosreestr-search-popup-content .nav-tabs.nav-justified > .dropdown .dropdown-menu {
+  top: auto;
+  left: auto;
+}
+@media (min-width: 768px) {
+  .rosreestr-search-popup-content .nav-tabs.nav-justified > li {
+    display: table-cell;
+    width: 1%;
+  }
+  .rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
+    margin-bottom: 0;
+  }
+}
+.rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
+  margin-right: 0;
+  border-radius: 4px;
+}
+.rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a,
+.rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:hover,
+.rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:focus {
+  border: 1px solid #ddd;
+}
+@media (min-width: 768px) {
+  .rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
+    border-bottom: 1px solid #ddd;
+    border-radius: 4px 4px 0 0;
+  }
+  .rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a,
+  .rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:hover,
+  .rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:focus {
+    border-bottom-color: #fff;
+  }
+}
+*/
+
+.rosreestr-search-popup-content .nav:before,
+.rosreestr-search-popup-content .nav:after,
+.rosreestr-search-popup-content .navbar:before,
+.rosreestr-search-popup-content .navbar:after
+/*,.rosreestr-search-popup-content .navbar-header:before,
+.rosreestr-search-popup-content .navbar-header:after,
+.rosreestr-search-popup-content .navbar-collapse:before,
+.rosreestr-search-popup-content .navbar-collapse:after*/ {
+  display: table;
+  content: " ";
+}
+
+.rosreestr-search-popup-content .tab-content,
+.rosreestr-search-popup-content .tab-content>div.active {	
+	display:inline-table;
+}
+
+.rosreestr-search-popup-content .tab-content {
+  overflow-y: scroll;
+}
+
+
+.rosreestr-search-popup-content .tab-content>div {
+	display:none;
+}
+

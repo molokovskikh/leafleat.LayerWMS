@@ -157,9 +157,11 @@ map = new L.Map('map', {
         zoomControl: true,
 		 Rosreestr:{
 			zoom:14,
-			markerLocation:true
+			markerLocation:true,
+			allWmsLayers:true
         }
 		//,animate:false
+		,attributionControl:false
 });
 
 
@@ -195,6 +197,7 @@ window._tester = {
 saumi.name='Сауми';
 
 var controlMap = L.control.layers().addTo(map);
+saumi.refreshControlLayers(controlMap);
 saumi.refreshControlLayers(controlMap);
 
 
