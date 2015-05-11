@@ -142,6 +142,55 @@ var rosreestrLayer = new L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/serv
 });
 
 
+var rosreestrLayerSelect = new L.wmsLayer('http://maps.rosreestr.ru/arcgis/rest/services/Cadastre/CadastreSelected/MapServer/export?',
+{
+	fn_custom:
+	function(params){
+			if(!this._cadNums||this._cadNums.length<=0)
+				return;
+			
+			
+			function normalizeCadNum(cadNum){ return cadNum.replace(/\x20/g,'').replace(/\:(0{0,})(\d+)/g,':$2'); }
+						
+			var strCadNums='';
+			for(var c=0;c<this._cadNums.length;c++) {
+				strCadNums += (strCadNums.length>0?',':'')+'\''+normalizeCadNum(this._cadNums[c])+'\'';
+			}
+			
+			var p=
+			{ 
+				transparent:true,
+				bbox:params.bbox,
+				dpi:'96',
+				f  :'image',
+				format:'PNG32',
+				bboxSR:'102100',
+				imageSR:'102100',
+				size:[params.width,params.height].join(','),
+				layers:'show:1',
+				layerDefs:'{"1":"PARCEL_ID in ('+strCadNums+')"}'
+			};		
+				
+			return p;
+		},
+	ignoreFeatureInfo:true,
+	proxy_url:'http://xs-msv:81/services/proxy',
+	opacity:0.55,
+	transparent:true	
+});
+rosreestrLayerSelect.addKadastrNo=function(cadNum){
+	this._cadNums=this._cadNums||[];	
+	this._cadNums.push(L.Util.trim(cadNum));
+};
+rosreestrLayerSelect.clearKadasttNo=function(cadNum){
+	if(this._cadNums)
+		this._cadNums.splice(0,this._cadNums.length);
+};
+
+
+
+
+
 var testImage=new L.imageOverlay("https://stat.online.sberbank.ru/PhizIC-res/15.1/commonSkin/images/logoHeader.png",
 new L.LatLngBounds(new L.LatLng(45.704553, 37.619781),new L.LatLng(55.794553, 49.919781))
 //new L.LatLngBounds(new L.LatLng(44, -93),new L.LatLng(45.02, -92))
@@ -163,7 +212,7 @@ map = new L.Map('map', {
 		//,animate:false
 		,attributionControl:false
 });
-
+rosreestrLayerSelect.addTo(map);
 
 var controlMapBase = 
  L.control.layers(
@@ -185,7 +234,7 @@ var controlMapBase =
 	.getLayers();
 */
 window._tester = {
-	r:rosreestrLayer,
+	r:rosreestrLayerSelect,
 	m:map,
 	//k:l,
 	s:saumi
@@ -198,9 +247,20 @@ saumi.name='Сауми';
 
 var controlMap = L.control.layers().addTo(map);
 saumi.refreshControlLayers(controlMap);
-saumi.refreshControlLayers(controlMap);
 
 
+map.rosreestrControl.search(['42:30:0302064:49'],function(key,data){
+	debugger
+});
+
+map.on('searchcomplete',function(e){
+	if(map.hasLayer(rosreestrLayer)){
+		for(var i=0;i<e.mapObjects.length;i++){
+			rosreestrLayerSelect.addKadastrNo(e.mapObjects[i].kadastrNo);
+		}
+		rosreestrLayerSelect._update();
+	}
+})
 //
 //saumi.getLayers().up('grounds');
 

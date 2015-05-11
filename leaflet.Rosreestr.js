@@ -44,25 +44,34 @@
 		//Развернуть вложенные списки номеров в один массив
 		function expandArrays(list){
 				var result=[];
+				if(typeof(list)==='string'){
+					list = expandArrays(list.split(','));
+				}
 				for(var i=0;i<list.length;i++){				
+					if(typeof(list[i])==='string'){
+						list[i] = list[i].split(',');
+						if(list[i].length==1) 
+							list[i]=list[i][0];
+					}
+						
 					if(list[i] instanceof Array)
-						result.concat(expandArrays(list[i]));
-					else {
-						if(result.indexOf(list[i])<0)
-							result.push(list[i]);
+						result = result.concat(expandArrays(list[i]));
+					else {						
+						if(typeof(list[i])=='string'&&result.indexOf(list[i])<0)
+							result.push(L.Util.trim(list[i]));
 					}	
 				}
 				return result;
 			}
 		
 		//Получить параметры url кадастрового(ых) номера(ов)
-		function getParamsCadNum(kadastrNoList){
-			kadastrNoList=kadastrNoList||expandArrays(arguments);
+		function getParamsCadNum(){
+			var kadastrNoList=expandArrays(arguments);
 			if(kadastrNoList&&kadastrNoList.length>0){
 				if(kadastrNoList.length>1){
 					var strKadastrNumbers='[';
 					for(var k=0;k<kadastrNoList.length;k++){
-						if(kadastrNoList[k] instanceof String&&this.validateParcel(kadastrNoList[k])) 
+						if(typeof(kadastrNoList[k])==='string'&&this.validateParcel(kadastrNoList[k])) 
 							strKadastrNumbers += (strKadastrNumbers.length>1?',':'')+'\''+kadastrNoList[k]+'\'';
 					}
 					strKadastrNumbers += ']';
@@ -82,11 +91,15 @@
 		this.validateParcel=function(cadNum){
 			return /^(\x20*\d{2}\x20*\:\x20*){2}\x20*\d+\x20*\:\x20*\d+\x20*$/i.test(cadNum);
 		},
+		this.validateParcelList=function(cadNums){
+			return /^((\x20*\d{2}\x20*\:\x20*){2}\x20*\d+\x20*\:\x20*\d+\x20*\,*)+$/i.test(cadNums);
+		},
 		
+				
 		//Поиск по кадастровому(ым) номеру(ам) или координате (локальной или географической)
 		this.find=function(){
 			var urlQuery = this._baseUrl,
-				cadNumMask = arguments.length==1&&!this.validateParcel(arguments[0])?arguments[0]:null,
+				cadNumMask = arguments.length==1&&!(this.validateParcel(arguments[0])||this.validateParcelList(arguments[0])) ? arguments[0]:null,
 				latLng = cadNumMask&&((cadNumMask.lat&&cadNumMask.lng)||(cadNumMask.x&&cadNumMask.y))?cadNumMask:null;
 			
 			if(latLng){
@@ -114,6 +127,7 @@
 					   return data;
 				   });
 		},
+				
 		
 		//Поиск адресной информации по кадастровому(ым) номеру(ам)
 		this.addressByNumbers=function() {
@@ -245,9 +259,9 @@
 			if(this._markerLoc){
 				this._markerLoc.bindPopup(this._popup);
 			}
-			map.on('searchcomplete',function(e){
-				debugger
-			});
+			//map.on('searchcomplete',function(e){
+			//	debugger
+			//});
 			
 			var objSearch=this._search;
 			map.on('wmsrefreshctrllayers',function(e){
@@ -257,12 +271,11 @@
 					if(objSearch._wmsLayers.indexOf(e.WMSLayer)<0)
 						objSearch._wmsLayers.push(e.WMSLayer);
 				}
-				//e.control,e.layers
-				debugger
+				//e.control,e.layers				
 			});
 			           
             this.on('search_locationfound',function(e){
-                debugger
+               
 				var obj = this._getObjectFromCache(e.text);
 				if(obj&&this._ptype in obj) {
 					if(obj[this._ptype]==SourceTypes.Rosreestr){		
@@ -273,28 +286,8 @@
 												latLng:obj[this._pkey],
 												attributesJSON: obj._getJSON?obj._getJSON():null
 											}
-										]
-	/*				
-						map.fire('searchcomplete',
-							{
-								mapObjects:
-									[
-										{
-											kadastrNo:'42:30',
-											latLng: {lat:55,lng:34},
-											attributesJSON:'{desc:"Описание",name:"Название",price:"Стоимость"}'
-										},
-										{
-											kadastrNo:'42:31',
-											latLng: {lat:54,lng:36},
-											attributesJSON:'{desc:"Описание2",name:"Название2",price:"Стоимость2"}'
-										}
-									]
-							});
-	*/						
-						});
-						debugger
-					
+										]				
+						});					
 					}
 				}
 			});
@@ -322,11 +315,20 @@
 				info = objTarget&&objTarget._getText?objTarget._getText():title;
 			if(this._markerLoc){
 				this._markerLoc.setPopupContent(this._buildContentPopup(obj));
+				
+				//Если установлены маркеры поиска через внешнюю функцию, то уберем их с карты
+				if(this._layerMarkersSearch){
+					while(this._layerMarkersSearch.length>0)
+						this._map.removeLayer(this._layerMarkersSearch.pop().unbindPopup());
+				}
+				
 			}
 			return nsControl.Search.prototype.showLocation.call(this,latlng,info);
 		},
 		
-
+		isExpand:function(){
+			return L.DomUtils.hasClass(this._container,'search-exp');
+		},
 		
 		_buildProxyFn:function(name){
 			var self=this,
@@ -377,7 +379,7 @@
 
 		//Формирование контента для балуна
 		_buildContentPopup:function(obj){			
-			obj = obj instanceof String?this._getObjectFromCache(obj):obj;			
+			obj = typeof obj==='string'?this._getObjectFromCache(obj):obj;			
 			var typeTarget=getKeyPType(obj,this._ptype).substr(1),
 				objTarget = this._getByType(obj),
 				html='<div class="rosreestr-search-popup-content"><ul class="nav nav-tabs">',
@@ -419,15 +421,19 @@
 				}
 				
 				result=result||'';
-				debugger
-				if(t==SourceTypes.DoubleGIS){
-					result+=L.Util.template('<div>{name}</div>',m);
-				}
+				//debugger
+				if(!$.isEmptyObject(m)) {
 				
-				if(t==SourceTypes.Rosreestr){
-					if(m.address)
-						result+=L.Util.template('<div>{OBJECT_ADDRESS}</div>',m.address);
-					result+=L.Util.template('<div>{CAD_NUM}</div>',m);
+					if(t==SourceTypes.DoubleGIS){
+						result+=L.Util.template('<div>{name}</div>',m);
+					}
+					
+					if(t==SourceTypes.Rosreestr){
+						if(m.address)
+							result+=L.Util.template('<div>{OBJECT_ADDRESS}</div>',m.address);
+						if(m&&m.CAD_NUM)
+							result+=L.Util.template('<div>{CAD_NUM}</div>',m);
+					}
 				}
 				return result;
 			}
@@ -510,7 +516,7 @@
 				ptype=controlSearch._ptype,
 				wmsLayers = controlSearch._search._wmsLayers||(controlSearch._search._wmsLayers=[]);
 			
-				//Определение WMS слоя
+			//Определение WMS слоя
 			function detectWmsLayer(layer){				
 				var wmsLayer=layer instanceof L.WMSLayer?layer:(typeof layer.getWMSLayer==='function'?layer.getWMSLayer():null);					
 				if(wmsLayer
@@ -567,7 +573,8 @@
 
 			//Проверка значения на формат кадастрового номера
 			function validateKadastrNo(s){
-				return /^([\d\x20]+\:?){1,6}$/i.test(s);
+				//return /^([\d\x20]+\:?){1,6}$/i.test(s);
+				return /^(([\d\x20]+\:?){1,6}\s*\,{0,1})+$/i.test(s);
 			}
 
 			//Получить строку объекта в формате JSON
@@ -721,13 +728,13 @@
 														 if(data.featuresCount>0) {
 															 for(var f=0;f<data.features.length;f++){ 
 																 var attr=data.features[f].attributes;
-																 if(self._mineKeys.CAD_NUM===attr.CAD_NUM){                                        
+																 if(self._mineKeys.CAD_NUM===attr.CAD_NUM){																	 
 																	 $.extend(getByType(self),
 																				   { 
 																					 address: $.extend({ _fieldAliases:data.fieldAliases, _fnAlias:fnAlias, _getJSON:getJSON },attr),
 																					 _getText:getText
 																				   }
-																			  );
+																			  );																	 
 																	 if(self._innerElement&&self._innerElement.innerHTML){
 																		 self._innerElement.innerHTML=getByType(self)._getText();
 																	 }															
@@ -903,22 +910,59 @@
 			}
 
 			//Поиск с использованием геокодера 2ГИС
-			function findWith2GIS(query){
-				var 
-				apiKey ='rudcgu3317',
-				urlQuery='http://catalog.api.2gis.ru/geo/search?version=1.3&key='+apiKey+'&q='+query,
+			function findWith2GIS(query,resultCount){
+				resultCount=resultCount||20; //Количество результатов поиска
+				var 				
+				apiKey ='rudcgu3317',				
+				urlQuery='http://catalog.api.2gis.ru/geo/search?version=1.3&key='+apiKey+'&limit='+resultCount+'&q='+query,
+				ajaxOptions = { dataType:'json' },
 				result=createDeferred();
-
-				$.ajax(urlQuery,
-				{ 
-					dataType:'json',
-					success: function(data,status,xhr){                        
+				
+				function additionUrlQuery(ignoreBound){
+					if(ignoreBound) return '';
+					
+					var map = controlSearch._map;
+					if(map&&map.getZoom()>6)
+					{
+						function formatLatLng(precision){
+							return L.Util.formatNum(this.lng, precision) + ',' +L.Util.formatNum(this.lat, precision);
+						};
+						
+						var NW = map.getBounds().getNorthWest(),
+							SE = map.getBounds().getSouthEast();
+						
+						return '&bound[point1]='+formatLatLng.call(NW,6)+'&bound[point2]='+formatLatLng.call(SE,6);
+					}
+					return '';
+				}
+				
+						
+				
+				function success(data,status,xhr){							 
+							 
+							 function newAjaxWithoutBound(){
+								 var _ajax_def = $.ajax(urlQuery+additionUrlQuery(true), ajaxOptions);
+								  _ajax_def._ignoreBound=true;
+								  _ajax_def.then(success,error);
+							 }
+							 
 							 if(data.error_code)
-							 {
-								 result.reject(rejectError(data));
+							 {									
+								if(
+									!xhr._ignoreBound&&
+									(
+										(data.error_code&&'incorrectBound')
+									)
+								)
+								{									  
+									newAjaxWithoutBound();
+								}
+								  else
+									result.reject(rejectError(data));
 								 return;
 							 }
 					  
+							//количество результатов
 							 if(data.total>0){                                 
 								var res = [],i,s,d,c;
 								for(i=0;i<data.result.length;i++){
@@ -930,18 +974,27 @@
 									d[pval]=s.name;
 									extendByType(d,s);
 									res.push(d);                
-								 }
+								 }	
+
 								 result.resolve(res);
 							 }
-							 else 
-								 result.reject(rejectNotFound());            
-					},
-					error: function(xhr,status,exception)
-					{
-						result.reject(rejectError(arguments));                    
-					}
+							 else {
+								 //Если данных нет и поиск был с использованием Bounds
+								if(!xhr._ignoreBound){
+									newAjaxWithoutBound();
+								} else 
+									result.reject(rejectNotFound());								 
+							 }
 				}
-				);
+					
+				function error(xhr,status,exception)
+				{
+					result.reject(rejectError(arguments));                    
+				}	
+
+				$.ajax(urlQuery+additionUrlQuery(),ajaxOptions)				
+				.then(success,error);				
+				
 				return result;
 			}
 
@@ -977,7 +1030,7 @@
 								
 								findByWmsLayer(latLng,wmsLayers[wl])
 								.then(function(o){									
-										if(o&&!(o instanceof String)){
+										if(o&&!(typeof o ==='string')){
 											var mixed ={};
 											mixed[getKeyPType(o,ptype)]=getByType(o);											
 											$.extend(dataItem,mixed);
@@ -1074,6 +1127,7 @@
 							strLayers = ls.join(',');
 							//wmsLayer.defaultWmsParams.layers=strLayers;
 						}
+						try {
 						
 						wmsLayer._getFeatureInfo.call(wmsLayer,latlng,function(data,error){
 							//wmsLayer.defaultWmsParams.layers = strLayersOld;
@@ -1085,7 +1139,11 @@
 						},
 						controlSearch._map,
 						strLayers);
-						
+						}
+						catch(e){
+							//wmsLayer.defaultWmsParams.layers = strLayersOld;
+							result.reject(rejectError(e));							
+						}
 					} else
 						result.reject(rejectNotFound());					
 				}				
@@ -1113,21 +1171,26 @@
 											exception = e.args[2];
 										}
 										
-										controlSearch._cancel.style.display = 'none';
-										controlSearch.options.autoCollapseTime=5000;
 										
-										if(xhr)                         
-											controlSearch.showAlert('Росреестр присел:'+''+exception+' ('+xhr.status+')');
-										
-										if(error)                                                
-											controlSearch.showAlert('Ошибка запроса:'+error.message+' ('+error.code+')');
+										if(controlSearch.isExpand()){
+											controlSearch._cancel.style.display = 'none';
+											controlSearch.options.autoCollapseTime=5000;
+											
+											if(xhr)                         
+												controlSearch.showAlert('Росреестр присел:'+''+exception+' ('+xhr.status+')');
+											
+											if(error)                                                
+												controlSearch.showAlert('Ошибка запроса:'+error.message+' ('+error.code+')');
+										}
 									}
 								}
 
 								if(e.code=='notfound') {
-									controlSearch._cancel.style.display = 'none';
-									controlSearch.options.autoCollapseTime=3000;
-									controlSearch.showAlert('Земельные участки не найдены!!!');
+									if(controlSearch.isExpand()){
+										controlSearch._cancel.style.display = 'none';
+										controlSearch.options.autoCollapseTime=3000;
+										controlSearch.showAlert('Земельные участки не найдены!!!');
+									}
 								}
 							}
 						);
@@ -1135,6 +1198,75 @@
 			}
 			
 			return findByAddress(text);
+		}
+		
+		,search:function(list,callback){
+			var self=this,
+				strCaNums=list instanceof Array?list.join(','):'',
+				searchInList=function(s){
+					var sr=RegExp(s);
+					for(var i=0;i<list.length;i++){
+						if(sr.test(list[i]))
+							return s;
+					}
+				};
+				
+			this._search(strCaNums,function(data){				
+					if(data&&data.length){
+						var boundsObjects,mapObjects;
+						for(var i=0;i<data.length;i++){
+							var objData = data[i],
+								objTarget = self._getByType(objData),
+								pkkData = self._getByType(objData,'_'+SourceTypes.Rosreestr),
+								cadNum = pkkData&&pkkData.CAD_NUM||pkkData&&pkkData.address&&pkkData.address.CAD_NUM,
+								objLoc = objData[self._pkey],								
+								createExtent = function() {
+									for(var a=0;a<arguments.length;a++){
+										if(arguments[a]) {
+											var src = arguments[a];										
+											if(src.XMIN&&src.YMIN&&src.XMAX&&src.XMAX) {
+												return L.latLngBounds(L.CRS.EPSG3857.unproject(L.point(src.XMIN,src.YMIN)),L.CRS.EPSG3857.unproject(L.point(src.XMAX,src.YMAX)));
+											} else  if (src.XC&&src.YC) {
+												return L.latLngBounds(L.CRS.EPSG3857.unproject(L.point(src.XC,src.YC)),L.CRS.EPSG3857.unproject(L.point(src.XC,src.YC)));
+											}
+										}
+									}									
+								},
+								objExtent = createExtent(pkkData,pkkData.address)||L.latLngBounds(objLoc),
+								title = objTarget&&objTarget._getText?objTarget._getText():objData[self._pval],			
+								marker = L.marker(objLoc,{title:title,data:objData,clickable:false}).addTo(self._map);
+								
+								
+							boundsObjects = !boundsObjects ? objExtent : boundsObjects.extend(objExtent);
+							if(callback&&cadNum) {																	
+								callback(searchInList(cadNum)||cadNum,objData);
+							}
+						
+							if(cadNum){
+								mapObjects = mapObjects || [];														
+								mapObjects.push({
+													kadastrNo:cadNum,
+													latLng:objLoc,
+													attributesJSON: objData._getJSON?objData._getJSON():null
+												});								
+							}
+							
+							marker.on('click',function(e){
+								this.closePopup();								
+								this.setPopupContent(self._buildContentPopup(this.options.data));
+							})
+							marker.bindPopup(self._popup);							
+							self._layerMarkersSearch=self._layerMarkersSearch||[];
+							self._layerMarkersSearch.push(marker);
+						}
+						if(boundsObjects)
+							self._map.fitBounds(boundsObjects);
+						
+						if(mapObjects)
+							self._map.fire('searchcomplete',{mapObjects:mapObjects});
+
+					}
+			});
 		}
     });
 
