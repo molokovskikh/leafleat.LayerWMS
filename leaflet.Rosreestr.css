@@ -79,63 +79,12 @@
   font-weight: bold;
 }
 
-/*
-
-
-.rosreestr-search-popup-content .nav-tabs.nav-justified {
-  width: 100%;
-  border-bottom: 0;
-}
-.rosreestr-search-popup-content .nav-tabs.nav-justified > li {
-  float: none;
-}
-.rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
-  margin-bottom: 5px;
-  text-align: center;
-}
-.rosreestr-search-popup-content .nav-tabs.nav-justified > .dropdown .dropdown-menu {
-  top: auto;
-  left: auto;
-}
-@media (min-width: 768px) {
-  .rosreestr-search-popup-content .nav-tabs.nav-justified > li {
-    display: table-cell;
-    width: 1%;
-  }
-  .rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
-    margin-bottom: 0;
-  }
-}
-.rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
-  margin-right: 0;
-  border-radius: 4px;
-}
-.rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a,
-.rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:hover,
-.rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:focus {
-  border: 1px solid #ddd;
-}
-@media (min-width: 768px) {
-  .rosreestr-search-popup-content .nav-tabs.nav-justified > li > a {
-    border-bottom: 1px solid #ddd;
-    border-radius: 4px 4px 0 0;
-  }
-  .rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a,
-  .rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:hover,
-  .rosreestr-search-popup-content .nav-tabs.nav-justified > .active > a:focus {
-    border-bottom-color: #fff;
-  }
-}
-*/
 
 .rosreestr-search-popup-content .nav:before,
 .rosreestr-search-popup-content .nav:after,
 .rosreestr-search-popup-content .navbar:before,
 .rosreestr-search-popup-content .navbar:after
-/*,.rosreestr-search-popup-content .navbar-header:before,
-.rosreestr-search-popup-content .navbar-header:after,
-.rosreestr-search-popup-content .navbar-collapse:before,
-.rosreestr-search-popup-content .navbar-collapse:after*/ {
+ {
   display: table;
   content: " ";
 }
@@ -154,3 +103,21 @@
 	display:none;
 }
 
+.rosreestr-search-popup-content .tab-content>div .info {
+  margin-top: 0px;
+  width: 100%;
+}
+
+.rosreestr-search-popup-content .tab-content>div .info .emptyrow {
+	height: 2px;
+	vertical-align: middle;
+}
+
+.rosreestr-search-popup-content .tab-content>div .info  .splitter {
+	border-bottom: 1px solid #dbdbdb;
+	background: red;
+}
+
+.rosreestr-search-popup-content .tab-content>div .info  .left {
+	width:60%;	
+}

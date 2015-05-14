@@ -99,7 +99,8 @@
 		//Поиск по кадастровому(ым) номеру(ам) или координате (локальной или географической)
 		this.find=function(){
 			var urlQuery = this._baseUrl,
-				cadNumMask = arguments.length==1&&!(this.validateParcel(arguments[0])||this.validateParcelList(arguments[0])) ? arguments[0]:null,
+				isCadNums=arguments.length>0&&this.validateParcelList(arguments[0]),
+				cadNumMask = arguments.length==1&&!(this.validateParcel(arguments[0])||isCadNums) ? arguments[0]:null,
 				latLng = cadNumMask&&((cadNumMask.lat&&cadNumMask.lng)||(cadNumMask.x&&cadNumMask.y))?cadNumMask:null;
 			
 			if(latLng){
@@ -121,8 +122,8 @@
 			//, укажем, что полученная информация адресная, если поиск был по номеру земельного участка)
 			return this._ajax(urlQuery)
 				   .pipe(function(data){
-					   if(!cadNumMask&&data){
-						   data._ignoreAddress=true;
+					   if((!cadNumMask&&!isCadNums)&&data){						  
+						  data._ignoreAddress=true;
 					   }
 					   return data;
 				   });
@@ -188,6 +189,10 @@
 									}
 							  }
 				);		
+		},
+		setContent:function(){
+			debugger
+			return L.Popup.prototype.setContent.apply(this,arguments);
 		}
 	});
 	
@@ -250,7 +255,7 @@
 			this._pval=this.options.propertyName||'title';
 			this._ptype='_sourceType';
 			this._pkkService = new RequestAjaxToRosreestr();
-			this._popup = new FindPopup(this);			
+			this._popup = new FindPopup(this);
         },
 		
         onAdd:function(map){
@@ -259,9 +264,9 @@
 			if(this._markerLoc){
 				this._markerLoc.bindPopup(this._popup);
 			}
-			//map.on('searchcomplete',function(e){
-			//	debugger
-			//});
+			
+			if(this.options.clickable)
+				map.on('click',this._clickMap,this);			
 			
 			var objSearch=this._search;
 			map.on('wmsrefreshctrllayers',function(e){
@@ -313,7 +318,13 @@
 			var obj = this._getObjectFromCache(title),
 				objTarget = this._getByType(obj),
 				info = objTarget&&objTarget._getText?objTarget._getText():title;
+			
 			if(this._markerLoc){
+				
+				if(!this._map.hasLayer(this._markerLoc)){
+					this._markerLoc.addTo(this._map);
+				}
+				
 				this._markerLoc.setPopupContent(this._buildContentPopup(obj));
 				
 				//Если установлены маркеры поиска через внешнюю функцию, то уберем их с карты
@@ -390,7 +401,7 @@
 				
 				//Если есть переназначенный обработчик в опциях, то используем его
 				if(typeof this.options.descByType ==='function'){
-					var result = typeof this.options.descByType(t);
+					var result = this.options.descByType(t);
 					if(!$.isEmptyObject(result)&&L.Util.trim(result).length>0)
 						return result;
 				}
@@ -406,12 +417,15 @@
 				if(t==SourceTypes.Nominatim)
 					return 'Nominatim';
 				
-				
+				return t;
 			}
 				
 			//Создание контента по типу источника данных
 			function buildByType(t,m){
 				var result;
+				
+				if($.isEmptyObject(model))
+					return;
 				
 				//Если есть переназначенный обработчик в опциях, то используем его
 				if(typeof this.options.buildByType==='function') {				
@@ -421,20 +435,24 @@
 				}
 				
 				result=result||'';
-				//debugger
-				if(!$.isEmptyObject(m)) {
+								
 				
-					if(t==SourceTypes.DoubleGIS){
-						result+=L.Util.template('<div>{name}</div>',m);
-					}
-					
-					if(t==SourceTypes.Rosreestr){
-						if(m.address)
-							result+=L.Util.template('<div>{OBJECT_ADDRESS}</div>',m.address);
-						if(m&&m.CAD_NUM)
-							result+=L.Util.template('<div>{CAD_NUM}</div>',m);
-					}
+				if(t==SourceTypes.DoubleGIS){
+					result+=L.Util.template('<div>{name}</div>',m);
 				}
+					
+				if(t==SourceTypes.Rosreestr){
+					if(m.address)
+						result+=L.Util.template('<div>{OBJECT_ADDRESS}</div>',m.address);
+					if(m&&m.CAD_NUM)
+						result+=L.Util.template('<div>{CAD_NUM}</div>',m);
+				}
+				
+				if(t==SourceTypes.Yandex){
+					if(m.balloonContentBody)
+						result+=m.balloonContentBody;
+				}
+				
 				return result;
 			}
 			
@@ -445,7 +463,7 @@
 					nameTab = descByType.call(this,SourceTypes[st]),
 					model = this._getByType(obj,'_'+typeCur),
 					contentTab = buildByType.call(this,typeCur,model);
-								
+									
 				if(contentTab&&L.Util.trim(contentTab).length>0){
 					html+='<li'+(typeCur===typeTarget?' class="active"':'')+' data-type="'+typeCur+'"><a>'+nameTab+'</a></li>';
 					content+='<div'+(typeCur===typeTarget?'  class="active"':'')+' data-type="'+typeCur+'">'+ contentTab +'</div>';
@@ -576,6 +594,10 @@
 				//return /^([\d\x20]+\:?){1,6}$/i.test(s);
 				return /^(([\d\x20]+\:?){1,6}\s*\,{0,1})+$/i.test(s);
 			}
+			
+			function validateGeoPoint(s){
+				return s.lat&&s.lng
+			}
 
 			//Получить строку объекта в формате JSON
 			function getJSON() {
@@ -674,7 +696,7 @@
 								//dst[pkey]=L.Projection.SphericalMercator.unproject(L.point(src.XC,src.YC).divideBy(L.Projection.Mercator.R_MAJOR));                 
 								dst[pkey]=L.CRS.EPSG3857.unproject(L.point(src.XC,src.YC));
 								dst[pval]=src.CAD_NUM;
-																
+								
 								dst._mineKeys={XC:src.XC,YC:src.YC,CAD_NUM:src.CAD_NUM};
 																
 								$.extend(
@@ -1006,8 +1028,10 @@
 					fnWrapPkk=function(data){
 						fnCallback(data);						
 						
+						var dataItem;
+						
 						//"Подтягивает" к объекту информацию из ПКК и внутренних WMS-сервисов
-						function dataItemJoin(dataItem) {							
+						function dataItemJoin() {							
 							var latLng = dataItem[pkey];							
 							
 							//Обращение к ПКК
@@ -1020,6 +1044,33 @@
 											var mixed ={};
 											mixed[getKeyPType(o,ptype)]=getByType(o);											
 											$.extend(dataItem,mixed);
+											
+											if(dataItem===controlSearch._cache[dataItem[pval]]){												
+												console.log(controlSearch._cache[dataItem[pval]]);
+											}
+											if(controlSearch._markerLoc){
+											
+												var fnReadyInPlaceMap = function(){
+													setTimeout(function(){
+													controlSearch._markerLoc.closePopup();																						
+													controlSearch._markerLoc.setPopupContent(controlSearch._buildContentPopup(controlSearch._cache[dataItem[pval]]))
+													},1000);
+												};
+												//Если маркер есть на карте, то добавим обновим у него связанный контент
+												if(controlSearch._map.hasLayer(controlSearch._markerLoc))
+													fnReadyInPlaceMap();
+												else  //Иначе перехватим момент добавления на карту, и тогда уже обновим контент
+												{
+													var addedInMap;
+													addedInMap=function(){
+														fnReadyInPlaceMap();
+														if(addedInMap)
+															controlSearch._markerLoc.off('add',addedInMap);
+													};
+													controlSearch._markerLoc.on('add',addedInMap);
+												}
+												
+											}
 										}										
 									});
 								}								
@@ -1039,10 +1090,12 @@
 							}
 						}
 						
+						
 						//Обход всех найденных объектов
 						if(data&&data.length>0) {
 							for(var i=0;i<data.length;i++){
-								dataItemJoin(data[i]);
+								dataItem=data[i];
+								dataItemJoin();
 							}
 						}						
 					};
@@ -1088,10 +1141,10 @@
 												if(e.code=='error') {
 													debugger
 													var xhr=e.args[0],state=e.args[1],exception=e.args[1];                    
-													controlSearch.showAlert('Не нашлось ничего:'+''+exception+' ('+xhr.status+')');      
+													controlSearch.showAlert('Не найдено из-за ошибки:'+''+exception+' ('+xhr.status+')');      
 												} 
 												if(e.code=='notfound')
-													controlSearch.showAlert('Ничего не нашлось!!!');      
+													controlSearch.showAlert('По вашему запросу нет данных!!!');      
 											}
 									);          
 								}
@@ -1152,7 +1205,7 @@
 			
 			
 			//Проверка на кадастровый номер
-			if(validateKadastrNo(text)) {
+			if(validateKadastrNo(text)||validateGeoPoint(text)) {
 				var result=findByKadastrNo(text);
 				result.then(
 							fnCallback,            
@@ -1177,7 +1230,7 @@
 											controlSearch.options.autoCollapseTime=5000;
 											
 											if(xhr)                         
-												controlSearch.showAlert('Росреестр присел:'+''+exception+' ('+xhr.status+')');
+												controlSearch.showAlert('Росреестр не доступен:'+''+exception+' ('+xhr.status+')');
 											
 											if(error)                                                
 												controlSearch.showAlert('Ошибка запроса:'+error.message+' ('+error.code+')');
@@ -1202,7 +1255,7 @@
 		
 		,search:function(list,callback){
 			var self=this,
-				strCaNums=list instanceof Array?list.join(','):'',
+				strCaNums=list instanceof Array?list.join(','):(typeof list==='string'?list:''),
 				searchInList=function(s){
 					var sr=RegExp(s);
 					for(var i=0;i<list.length;i++){
@@ -1213,6 +1266,12 @@
 				
 			this._search(strCaNums,function(data){				
 					if(data&&data.length){
+						
+						//Если выствлен маркер из поиска контрола, то снимем его						
+						if(self._markerLoc&&self._map.hasLayer(self._markerLoc)){														
+							self._map.removeLayer(self._markerLoc);
+						}
+						
 						var boundsObjects,mapObjects;
 						for(var i=0;i<data.length;i++){
 							var objData = data[i],
@@ -1234,7 +1293,7 @@
 								},
 								objExtent = createExtent(pkkData,pkkData.address)||L.latLngBounds(objLoc),
 								title = objTarget&&objTarget._getText?objTarget._getText():objData[self._pval],			
-								marker = L.marker(objLoc,{title:title,data:objData,clickable:false}).addTo(self._map);
+								marker = L.marker(objLoc,{title:title,data:objData,cadNum:cadNum,clickable:false}).addTo(self._map);
 								
 								
 							boundsObjects = !boundsObjects ? objExtent : boundsObjects.extend(objExtent);
@@ -1255,7 +1314,13 @@
 								this.closePopup();								
 								this.setPopupContent(self._buildContentPopup(this.options.data));
 							})
-							marker.bindPopup(self._popup);							
+							marker.bindPopup(self._popup);
+							//При удалении маркера с карты, удалим с росреестра
+							marker.on('remove',function(){								
+								 if(this.options.cadNum){
+									this._map.fire('removeselectcadnum',{cadNum:this.options.cadNum});
+								 }
+							});
 							self._layerMarkersSearch=self._layerMarkersSearch||[];
 							self._layerMarkersSearch.push(marker);
 						}
@@ -1267,7 +1332,40 @@
 
 					}
 			});
-		}
+		},
+		
+		_clickMap:function(e){
+					 debugger
+					 var self=this,
+						 map=self._map,
+						 loc=e.latlng,
+						 strLoc=loc.lat+' '+loc.lng,
+						 obj;
+					
+					function popup(){
+						if(obj)
+						setTimeout(function(){						
+							self._popup
+								.setLatLng(loc)
+								.setContent(self._buildContentPopup(obj))
+								.addTo(map);
+							}
+						,1000);
+					}
+					
+					 self._search(loc,function(data){
+						if(data&&data.length>0){							
+							obj = data[0];
+							popup();
+						}
+						else 
+							 self._search(strLoc,function(d){								 	
+									obj = d&&d.length>0?d[0]:null;
+									popup();
+							 });
+					 });					 				
+		}		
+		
     });
 
     L.Map.addInitHook(function () {

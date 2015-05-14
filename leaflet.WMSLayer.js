@@ -480,7 +480,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		this.on('layers_changed',this._onLayersChanged,this);
     },
   onAdd: function(map){    
-		debugger
+		
 		this._map = map;
 		this._updateCrs();
         
@@ -503,8 +503,7 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		}
 		
 		if(!this._controlLayers)
-		{
-			debugger
+		{			
 			this.refreshControlLayers();
 		}
 		
@@ -545,7 +544,8 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 			viewreset: this._reset,
 			moveend: this._moveend,
 			resize: this._resize,
-			click: this._click			
+			click: this._click,
+			layerremove: this._layerremove
 		};
 
 		if (this._zoomAnimated) {
@@ -658,6 +658,13 @@ var wmsLayer = L.TileLayer.WMS.FeatureInfo = L.Layer.extend({
 		   return;
 	   this._getFeatureInfo(e.latlng);
     },
+	_layerremove:function(e){
+		if(e.layer===this){
+			if(typeof this.options.loading==='function'){
+				this.options.loading(true);
+			}
+		}
+	},
 //--------------------------	
 //Обработчики событий карты  
 //--------------------------
@@ -1495,8 +1502,12 @@ _update:function(force)
 		
 		
 		//Кастомная функция для корректировки параметров
-		if(typeof this.options.fn_custom=='function')		
+		if(typeof this.options.fn_custom=='function'){		
 			requestParams = this.options.fn_custom.call(this,requestParams);
+			//Если параметры пусты, то выходим
+			if(!requestParams)
+				return;
+		}
 		
 		
 		
