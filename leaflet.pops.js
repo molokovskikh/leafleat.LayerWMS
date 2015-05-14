@@ -142,6 +142,7 @@ nsTile.Kosmosnimki = nsTile.extend({
 	   	var sd = {crs:L.CRS.EPSG3395},
 			defaultOptions = (options&&L.Util.extend({},sd,options))||sd,
 			defaultLayer= defaultOptions.layerName||defaultOptions.layer||'04C9E7CE82C34172910ACDBF8F1DF49A';
+			//'&apikey=7BDJ6RRTHH'
 		return nsTile.prototype.initialize.call(this,url||'http://maps.kosmosnimki.ru/TileService.ashx?Request=GetTile&layerName='+defaultLayer+'&crs='+defaultOptions.crs.code+'&x={x}&y={y}&z={z}',defaultOptions);
     }
 })

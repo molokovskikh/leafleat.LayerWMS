@@ -522,14 +522,14 @@ var CADASTRE_NUMBER_PARTS_LENGTH = [2, 2, 7, 5, 5],
 		
 		result+=
 				row('Кадастровый номер',obj.CAD_NUM)
-			   +row('Статус',PARCEL_STATES[parseInt(obj.PARCEL_STATUS)-1])
+			   +row('Статус',data(obj.PARCEL_STATUS&&PARCEL_STATES[parseInt(obj.PARCEL_STATUS)-1]))
 			   +row('Адрес',data(obj.OBJECT_ADDRESS))
 			   +emptyrow
-			   +row(AREA_TYPES[obj.AREA_TYPE],data(obj.AREA_VALUE)+' '+UNITS[obj.AREA_UNIT])
+			   +(obj.AREA_VALUE?row(AREA_TYPES[obj.AREA_TYPE],data(obj.AREA_VALUE)+' '+UNITS[obj.AREA_UNIT]):'')
 			   +emptyrow
-			   +row('Кадастровая стоимость',data(obj.CAD_COST)+' '+UNITS[obj.CAD_UNIT])
+			   +row('Кадастровая стоимость',data(obj.CAD_COST&&(data(obj.CAD_COST)+' '+UNITS[obj.CAD_UNIT])))
 			   +emptyrow
-			   +row('Форма собственности',(obj.FORM_RIGHTS&&FORM_RIGHTS[obj.FORM_RIGHTS])||data())
+			   +row('Форма собственности',data(obj.FORM_RIGHTS&&FORM_RIGHTS[obj.FORM_RIGHTS]))
 			   +emptyrow
 			   +emptyrow
 			   +row('Дата постановки на учет',dtFormat(obj.DATE_CREATE,NO_DATA))
@@ -548,7 +548,7 @@ var CADASTRE_NUMBER_PARTS_LENGTH = [2, 2, 7, 5, 5],
 			   +row('Границы',dtFormat(obj.ACTUAL_DATE,NO_DATA))
 			   +splitter
 			   +'<tr><td><div><strong>Характеристики:</strong></td></tr>'
-			   +row('Категория',CATEGORY_TYPES[obj.CATEGORY_TYPE])
+			   +row('Категория',data(obj.CATEGORY_TYPE&&CATEGORY_TYPES[obj.CATEGORY_TYPE]))
 			   +emptyrow
 			   +emptyrow
 			   +'<tr><td class="leftColumn" colspan="2">Разрешенное использование</td></tr>'
@@ -556,7 +556,7 @@ var CADASTRE_NUMBER_PARTS_LENGTH = [2, 2, 7, 5, 5],
 			   +emptyrow
 			   +row('&nbsp;&nbsp;&nbsp;&nbsp;По классификатору (код)',data(obj.UTIL_CODE))
 			   +emptyrow
-			   +row('&nbsp;&nbsp;&nbsp;&nbsp;По классификатору (описание)', UTILIZATIONS[obj.UTIL_CODE])
+			   +row('&nbsp;&nbsp;&nbsp;&nbsp;По классификатору (описание)', data(obj.UTIL_CODE&&UTILIZATIONS[obj.UTIL_CODE]))
 			   +emptyrow
 			   +row('&nbsp;&nbsp;&nbsp;&nbsp;По документу',data(obj.UTIL_BY_DOC))
 			   ;

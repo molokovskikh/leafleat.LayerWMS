@@ -162,6 +162,9 @@
 	
 	//Балун на карте
 	var FindPopup = L.Popup.extend({
+		options:{
+			maxWidth:500
+		},
 		initialize: function (findControl,options) {
             L.Util.setOptions(this, options);
 			L.Popup.prototype.initialize.call(this,this.options);
@@ -178,22 +181,53 @@
 										
 										$('li',tabHeader).click(function(e){
 											var tab=$(this),
-												joinContent=$('>div[data-type=\''+tab.attr('data-type')+'\']',tabContent);
+												joinContent=$('.scroll-container>div[data-type=\''+tab.attr('data-type')+'\']',tabContent);
 											
 											$('li',tabHeader).removeClass('active');
-											$('>div',tabContent).removeClass('active');
+											$('.scroll-container>div',tabContent).removeClass('active');
 											
 											tab.addClass('active');
 											joinContent.addClass('active');
 										});
+										
+										if(this._resize)
+											this._resize(tabContent.closest('.leaflet-popup-content'));
+										
 									}
 							  }
-				);		
+				,this);		
 		},
 		setContent:function(){
 			debugger
 			return L.Popup.prototype.setContent.apply(this,arguments);
+		},
+		_resize:function(e,contentPopup){
+			debugger
+			var mapSize=e.newSize||this._map.getSize(),
+				h=Math.floor(mapSize.y*.9),
+				w=Math.floor(mapSize.x*.9);
+			
+			contentPopup = (contentPopup)||$('.rosreestr-search-popup-content .tab-content .active').closest('.leaflet-popup-content');
+			/*
+			TODO Вычислить и установить размер scroll-container, расчет выполнить от contentPopup (вычислить паддинги и отступы внутренних элементов и ul заголовка)
+			*/	
+			if(contentPopup.length>0){				
+				if(contentPopup.width()>w)
+					contentPopup.width(w);
+				if(contentPopup.height()>h)
+					contentPopup.height(h);
+			}
+		},
+		onAdd:function(map){			
+			map.on('resize',this._resize,this);
+			return L.Popup.prototype.onAdd.apply(this,arguments);
+		},
+		onRemove:function(map){			
+			map.off('resize',this._resize,this);
+			return L.Popup.prototype.onRemove.apply(this,arguments);
 		}
+		
+		
 	});
 	
 	
@@ -394,7 +428,7 @@
 			var typeTarget=getKeyPType(obj,this._ptype).substr(1),
 				objTarget = this._getByType(obj),
 				html='<div class="rosreestr-search-popup-content"><ul class="nav nav-tabs">',
-				content='<div class="tab-content">';
+				content='<div class="tab-content"><div class="scroll-container">';
 
 			//Получить описание сервиса по типу (используется для имен закладок)
 			function descByType(t){
@@ -470,7 +504,7 @@
 				}				
 			}
 		     						
-			html+='</ul>'+content+'</div></div>';
+			html+='</ul>'+content+'</div></div></div>';
 					
 				
 				
