@@ -163,59 +163,136 @@
 	//Балун на карте
 	var FindPopup = L.Popup.extend({
 		options:{
-			maxWidth:500
+			minWidth:50
+		//	autoPan:true
 		},
 		initialize: function (findControl,options) {
             L.Util.setOptions(this, options);
 			L.Popup.prototype.initialize.call(this,this.options);
-			this._findControl=findControl;
-			this.on('contentupdate',
-								function(){
-									var content=$('.rosreestr-search-popup-content');
-									if(content.length>0) {				
-										var tabHeader = $('.nav-tabs',content),
-											tabContent = $('.tab-content',content);
-										
-										if($('li',tabHeader).length==1)
-											tabHeader.hide();
-										
-										$('li',tabHeader).click(function(e){
-											var tab=$(this),
-												joinContent=$('.scroll-container>div[data-type=\''+tab.attr('data-type')+'\']',tabContent);
-											
-											$('li',tabHeader).removeClass('active');
-											$('.scroll-container>div',tabContent).removeClass('active');
-											
-											tab.addClass('active');
-											joinContent.addClass('active');
-										});
-										
-										if(this._resize)
-											this._resize(tabContent.closest('.leaflet-popup-content'));
-										
-									}
-							  }
-				,this);		
+			this._findControl=findControl;			
 		},
 		setContent:function(){
 			debugger
 			return L.Popup.prototype.setContent.apply(this,arguments);
 		},
+		_adjustPan:function(){			
+			var result = L.Popup.prototype._adjustPan.apply(this,arguments);
+			this._updateEnd();
+			return result;
+		},
+		_updateEnd:function(){
+			this.fire('updateend');
+			var content=$('.rosreestr-search-popup-content');
+			if(content.length>0) {				
+					var tabHeader = $('.nav-tabs',content),
+						tabContent = $('.tab-content',content),
+						popup=this;
+					
+					if($('li',tabHeader).length==1)
+						tabHeader.hide();
+					
+					$('li',tabHeader).click(function(e){
+						var tab=$(this),
+							joinContent=$('.scroll-container>div[data-type=\''+tab.attr('data-type')+'\']',tabContent);
+						
+						$('li',tabHeader).removeClass('active');
+						$('.scroll-container>div',tabContent).removeClass('active');
+						
+						tab.addClass('active');
+						joinContent.addClass('active');
+						
+						if(popup._resize) {
+							popup._resize(popup._contentNode||tabContent.closest('.leaflet-popup-content'));										
+							popup._containerWidth = popup._container.offsetWidth;
+							popup._updatePosition();				
+							popup._adjustPan();
+						}
+					});
+					
+					if(popup._resize)
+						popup._resize(popup._contentNode||tabContent.closest('.leaflet-popup-content'));
+					debugger
+			}
+		},		
+		_updateWithoutContent:function(){
+			this._container.style.visibility = 'hidden';
+			this.fire('contentupdate');
+			this._updateLayout();
+			this._updatePosition();
+			this._container.style.visibility = '';
+			this._adjustPan();
+			this._updateEnd();
+		},		
 		_resize:function(e,contentPopup){
-			debugger
-			var mapSize=e.newSize||this._map.getSize(),
-				h=Math.floor(mapSize.y*.9),
-				w=Math.floor(mapSize.x*.9);
+			if(e.newSize) {
+				this._updateWithoutContent();				
+				return;
+			}		
 			
-			contentPopup = (contentPopup)||$('.rosreestr-search-popup-content .tab-content .active').closest('.leaflet-popup-content');
-			/*
-			TODO Вычислить и установить размер scroll-container, расчет выполнить от contentPopup (вычислить паддинги и отступы внутренних элементов и ul заголовка)
-			*/	
-			if(contentPopup.length>0){				
-				if(contentPopup.width()>w)
-					contentPopup.width(w);
-				if(contentPopup.height()>h)
-					contentPopup.height(h);
+			function calcOffset(child,parent) {
+				var offsetChild = child.offset(),
+					offsetParent= parent.offset(),
+					position = { top:offsetChild.top-offsetParent.top,left:offsetChild.left-offsetParent.left };
+					return { 
+							left:position.left,
+							top:position.top,							
+							bottom:parent.height()-position.top-child.height(),
+							right: parent.width()-position.left-child.width()
+							}
+			}
+						
+			var mapSize=e.newSize||this._map.getSize(),
+				h=Math.floor(mapSize.y*.98),
+				w=Math.floor(mapSize.x*.98);
+			
+			//this.options.maxWidth=w;
+			
+			contentPopup = (contentPopup&&$(contentPopup))||$(this._contentNode)||$('.rosreestr-search-popup-content .tab-content .active').closest('.leaflet-popup-content');
+			
+			var popup = $(this._container)||contentPopup.closest('.leaflet-popup'),
+				contentPopupOffset = calcOffset(contentPopup,popup);
+					
+			if(popup.length>0){
+
+				var tabContent=$('.tab-content .scroll-container',contentPopup),
+					tabContentOffset=calcOffset(tabContent,popup),						
+					calcHeight=h-contentPopupOffset.bottom-tabContentOffset.top;
+				
+				debugger
+				
+				if(contentPopupOffset.bottom>=0){
+					
+					if($('div.active',tabContent).height()<calcHeight){
+						tabContent.css('height','');
+					} else
+						tabContent.height(calcHeight);
+					
+					if(popup.height()>h) {
+						popup.height(h);
+						
+						if($('div.active',tabContent).height()<calcHeight){
+							debugger
+							tabContent.css('height','');
+						}
+					}
+					if(popup.height()==h){
+						if($('div.active',tabContent).height()>calcHeight){
+							debugger
+							//$('div.active',tabContent).height(calcHeight);
+						}
+					}
+					
+				} else {
+					
+					if(popup.height()<h){
+						popup.height(h);
+						tabContent.css('height','');						
+					}					
+				}
+				
+			//	this._containerWidth = this._container.offsetWidth;
+			//	this._updatePosition();				
+			//	this._adjustPan();
 			}
 		},
 		onAdd:function(map){			
@@ -225,9 +302,8 @@
 		onRemove:function(map){			
 			map.off('resize',this._resize,this);
 			return L.Popup.prototype.onRemove.apply(this,arguments);
-		}
-		
-		
+		}	
+				
 	});
 	
 	

@@ -242,7 +242,7 @@ map = new L.Map('map', {
 					return contentPkkBuilder(model);
 				}
 			},
-			clickable:true
+			clickable:false
         }
 		//,animate:false
 		,attributionControl:false		
@@ -250,16 +250,42 @@ map = new L.Map('map', {
 
 L.Control.Layers.include({
 	getLayer:function(name){
-		for(var l in this._layers){			
+		for(var l in this._layers){
 			if(this._layers[l].name===name){
 					return this._layers[l].layer;
 			}
 		}
 	},
+	isOverlay:function(layer){
+		for(var l in this._layers){
+			if(this._layers[l].layer===layer){
+					return this._layers[l].overlay==true;
+			}
+		}
+	},
+	isBase:function(layer){
+		return !this.isOverlay(layer);
+	},
+	getSelectedLayers:function(onlyBase){
+		var selLayers=[];
+		for(var l in this._layers){			
+			if((onlyBase&&!this._layers[l].overlay&&this._map.hasLayer(this._layers[l].layer))||(!onlyBase&&this._map.hasLayer(this._layers[l].layer)))
+					selLayers.push(this._layers[l].layer);			
+		}
+		return selLayers;
+	},
 	selectLayer:function(name){
-		var layer = this.getLayer(name);
-		if(layer)
+		var layer = this.getLayer(name);		
+		if(layer){			
+			if(this.isBase(layer)){
+				var sl=this.getSelectedLayers(true);
+				for(var i=0;i<sl.length;i++) {
+					if(sl[i]!==layer)
+						this._map.removeLayer(sl[i]);
+				}
+			}
 			layer.addTo(this._map);
+		}
 	}
 });
 
