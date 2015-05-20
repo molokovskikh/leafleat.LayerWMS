@@ -176,8 +176,8 @@
 			return L.Popup.prototype.setContent.apply(this,arguments);
 		},
 		_adjustPan:function(){			
-			var result = L.Popup.prototype._adjustPan.apply(this,arguments);
 			this._updateEnd();
+			var result = L.Popup.prototype._adjustPan.apply(this,arguments);			
 			return result;
 		},
 		_updateEnd:function(){
@@ -213,16 +213,26 @@
 						popup._resize(popup._contentNode||tabContent.closest('.leaflet-popup-content'));
 					debugger
 			}
+			this._calc_optimalWidth();
 		},		
 		_updateWithoutContent:function(){
 			this._container.style.visibility = 'hidden';
 			this.fire('contentupdate');
 			this._updateLayout();
 			this._updatePosition();
-			this._container.style.visibility = '';
-			this._adjustPan();
-			this._updateEnd();
+			this._container.style.visibility = '';			
+			this._adjustPan();			
 		},		
+		_calc_optimalWidth:function(){
+			var scroolBarWidh = $('.scroll-container').get(0).offsetWidth
+			-$('.scroll-container').get(0).clientWidth
+			-parseInt($('.scroll-container').css('padding-left'))
+			-parseInt($('.scroll-container').css('padding-right')),
+			newSize=$('.scroll-container').closest('.leaflet-popup-content').width()+scroolBarWidh;
+			if(this._map.getSize().x>=newSize){
+				$('.scroll-container').closest('.leaflet-popup-content').width(newSize);
+			}
+		},
 		_resize:function(e,contentPopup){
 			if(e.newSize) {
 				this._updateWithoutContent();				
@@ -289,10 +299,7 @@
 						tabContent.css('height','');						
 					}					
 				}
-				
-			//	this._containerWidth = this._container.offsetWidth;
-			//	this._updatePosition();				
-			//	this._adjustPan();
+						
 			}
 		},
 		onAdd:function(map){			
