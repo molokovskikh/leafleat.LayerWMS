@@ -91,6 +91,51 @@ function over(){
 			}
 		}		
 	}
+	
+	if(this.options.detectFails) {
+		
+		var syncObjLoadTiles = { tiles:0,loaded:0,fails:0,layer:this },
+			defaultFailsPercent=0.6;
+		this.options.detectFails=typeof this.options.detectFails==='number'&&this.options.detectFails>0
+								?(this.options.detectFails>1?this.options.detectFails/100:this.options.detectFails)
+								:defaultFailsPercent;
+		
+		
+		this.on('loading',function(){
+			this.tiles=0;
+			this.loaded=0;
+			this.fails=0;
+		},syncObjLoadTiles);
+		
+		
+		this.on('tileloadstart',function(e){
+			this.tiles++;			
+			//Начало загрузки тайла
+			//e.tile , e.coords
+		},syncObjLoadTiles);
+		
+		this.on('tileload',function(e){
+			this.loaded++;
+			//Загрузка тайла
+			//e.tile , e.coords
+		},syncObjLoadTiles);
+		
+		this.on('tileerror',function(){
+			//Ошибка загрузки тайлов
+			//e.error ,e.tile , e.coords			
+			this.fails++;
+		},syncObjLoadTiles);
+		
+		
+		this.on('load',function(){
+			debugger
+			//Загрузка всех тайлов
+			//Если процент битых тайлов превышает заданный
+			if(this.fails/this.tiles>this.options.detectFails){
+				this.fire('needchangelayer',this);
+			}
+		},syncObjLoadTiles);
+	}
 },
 {
 	//Set list override function

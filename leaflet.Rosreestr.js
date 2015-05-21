@@ -29,6 +29,23 @@
     if(!L.CRS.EPSG3857.unproject)
         L.CRS.EPSG3857.unproject=function(p){ return L.CRS.EPSG3857.projection.unproject(p.divideBy(L.Projection.Mercator.R_MAJOR)) };
 
+	//Расширим контрол управления слоями
+	L.Control.Layers.include({
+		getLayer:function(name){
+			for(var l in this._layers){
+				if(this._layers[l].name===name){
+					return this._layers[l].layer;
+				}
+			}
+		},
+		selectLayer:function(name){
+			var layer = this.getLayer(name);
+			if(layer)
+				layer.addTo(this._map);
+		}
+	});
+
+
 	//Константы ТИПЫ ИСТОЧНИКОВ ДАННЫХ ДЛЯ ПОИСКА
 	var SourceTypes={
 			Rosreestr:'rosreestr', 
