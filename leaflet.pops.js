@@ -158,7 +158,7 @@ nsTile.DGis = nsTile.extend({
 nsTile.Yandex = nsTile.extend({
    statics:{ create :function (url,options) {return new nsTile.Yandex(url,options);}},  
    initialize: function(url,options){
-		var sd = {crs:L.CRS.EPSG3395,subdomains:['00','01','02','03','04']};		
+		var sd = {crs:L.CRS.EPSG3395,subdomains:['01','02','03','04']};		
 		return nsTile.prototype.initialize.call(this,url||'http://{s}.pvec.maps.yandex.net/?l=pmap&x={x}&y={y}&z={z}',(options&&L.Util.extend({},sd,options))||sd);		 
     }
 }),
@@ -166,7 +166,7 @@ nsTile.Yandex = nsTile.extend({
 //OpenStreetMap 
 nsTile.Osm = nsTile.extend({
    statics:{ create :function (url,options) {return new nsTile.Osm(url,options);}},  
-   initialize: function(url,options){
+   initialize: function(url,options){	     
 		 return nsTile.prototype.initialize.call(this,url||'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',options);
     }
 }),
@@ -174,7 +174,7 @@ nsTile.Osm = nsTile.extend({
 //Google
 nsTile.Google = nsTile.extend({
    statics:{ create :function (url,options) {return new nsTile.Google(url,options);}},  
-   initialize: function(url,options){
+   initialize: function(url,options){	     
 		 return nsTile.prototype.initialize.call(this,url||'http://mt1.google.com/vt/lyrs=r&x={x}&y={y}&z={z}',options);
     }
 }),

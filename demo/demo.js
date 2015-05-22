@@ -251,47 +251,6 @@ map = new L.Map('map', {
 		,attributionControl:false		
 });
 
-L.Control.Layers.include({
-	getLayer:function(name){
-		for(var l in this._layers){
-			if(this._layers[l].name===name){
-					return this._layers[l].layer;
-			}
-		}
-	},
-	isOverlay:function(layer){
-		for(var l in this._layers){
-			if(this._layers[l].layer===layer){
-					return this._layers[l].overlay==true;
-			}
-		}
-	},
-	isBase:function(layer){
-		return !this.isOverlay(layer);
-	},
-	getSelectedLayers:function(onlyBase){
-		var selLayers=[];
-		for(var l in this._layers){			
-			if((onlyBase&&!this._layers[l].overlay&&this._map.hasLayer(this._layers[l].layer))||(!onlyBase&&this._map.hasLayer(this._layers[l].layer)))
-					selLayers.push(this._layers[l].layer);			
-		}
-		return selLayers;
-	},
-	selectLayer:function(name){
-		var layer = this.getLayer(name);		
-		if(layer){			
-			if(this.isBase(layer)){
-				var sl=this.getSelectedLayers(true);
-				for(var i=0;i<sl.length;i++) {
-					if(sl[i]!==layer)
-						this._map.removeLayer(sl[i]);
-				}
-			}
-			layer.addTo(this._map);
-		}
-	}
-});
-
 
 var 
 controlMapBase = 
@@ -331,9 +290,11 @@ saumi.refreshControlLayers(controlMap);
 
 
 map.on('searchcomplete',function(e){	
-		for(var i=0;i<e.mapObjects.length;i++){
-			rosreestrLayerSelect.addKadastrNo(e.mapObjects[i].kadastrNo);
-		}	
+		if(e.mapObjects)
+			for(var i=0;i<e.mapObjects.length;i++){
+				if(e.mapObjects[i]&&e.mapObjects[i].kadastrNo)
+					rosreestrLayerSelect.addKadastrNo(e.mapObjects[i].kadastrNo);
+			}
 });
 map.on('overlayadd overlayremove',function(e){
 		
@@ -358,17 +319,15 @@ map.search=function(){
 	
 map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){
 	debugger
-	map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){
+	map.search('Абракадабра',function(key,data){
 		debugger
 	//controlMapBase.selectLayer('Яндекс');
-	});
+	},
+	{clear:false}
+	);
 
 });
 
-map.on('needchangelayer',function(e){
-	controlMapBase.selectLayer('Яндекс');
-	debugger	
-});
 
 
 

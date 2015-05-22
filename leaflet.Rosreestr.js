@@ -29,22 +29,129 @@
     if(!L.CRS.EPSG3857.unproject)
         L.CRS.EPSG3857.unproject=function(p){ return L.CRS.EPSG3857.projection.unproject(p.divideBy(L.Projection.Mercator.R_MAJOR)) };
 
-	//Расширим контрол управления слоями
+	//Расширим контрол управления слоями		
 	L.Control.Layers.include({
+		//Получить слой по имени
 		getLayer:function(name){
 			for(var l in this._layers){
 				if(this._layers[l].name===name){
-					return this._layers[l].layer;
+						return this._layers[l].layer;
 				}
 			}
 		},
-		selectLayer:function(name){
-			var layer = this.getLayer(name);
-			if(layer)
+		//Получить следующий слой
+		getNextLayer:function(layer,onlyBase){
+			if(layer&&this._layers) {
+				var t=false;
+				for(var l in this._layers) {
+					if(t&&((onlyBase&&this.isBase(this._layers[l].layer))||!onlyBase))  return this._layers[l].layer;
+					t=this._layers[l].layer===layer;
+				}
+			}
+		},
+		//Получить имя слоя
+		getNameLayer:function(layer){
+			if(layer&&this._layers) {				
+				for(var l in this._layers) {
+					if(this._layers[l].layer===layer)
+						return this._layers[l].name;					
+				}
+			}			
+		},
+		//Is overlay layer?
+		isOverlay:function(layer){
+			for(var l in this._layers){
+				if(this._layers[l].layer===layer){
+						return this._layers[l].overlay==true;
+				}
+			}
+		},
+		//Слой базовый?
+		isBase:function(layer){
+			return !this.isOverlay(layer);
+		},
+		//Получить список выделенных(видимых на карте) слоев
+		//onlyBase -  выводить только базовые слои
+		getSelectedLayers:function(onlyBase){
+			var selLayers=[];
+			for(var l in this._layers){			
+				if((onlyBase&&!this._layers[l].overlay&&this._map.hasLayer(this._layers[l].layer))||(!onlyBase&&this._map.hasLayer(this._layers[l].layer)))
+						selLayers.push(this._layers[l].layer);			
+			}
+			return selLayers;
+		},
+		//Выбрать слой на карте (по имени)
+		selectLayer:function(layer){
+			layer = typeof layer==='string'?this.getLayer(layer):layer;
+			if(layer){
+				if(this.isBase(layer)){
+					var sl=this.getSelectedLayers(true);
+					for(var i=0;i<sl.length;i++) {
+						if(sl[i]!==layer)
+							this._map.removeLayer(sl[i]);
+					}
+				}
 				layer.addTo(this._map);
+			}
 		}
 	});
 
+
+	L.Control.Layers.addInitHook(function(){
+		
+		this.onAdd=function onAdd(map) {			
+			
+			var result = L.Control.Layers.prototype.onAdd.apply(this,arguments),
+				controlLayers = this||onAdd._self;
+			if(map)
+				map.on('needchangelayer',function needchangelayer(e){
+					
+					var _map = this||e.layer&&e.layer._map||map||onAdd._self._map, //Карта
+						keyFail = _map.getZoom()+'_'+_map.getBounds().toBBoxString(),//Ключ для сохранения состояния крэша тайловых слоёв
+						layer = controlLayers.getNextLayer(e.layer,true)||needchangelayer._first; //Вычислим следующий слой
+					
+					//Если ситуация повторилась (крэш тайлового слоя), и мы уже сделали всё что могли, то выходим
+					if(needchangelayer._isFails&&needchangelayer._isFails[keyFail])
+						return;	
+					
+					//Если следующий слой выявлен
+					if(layer) {
+						
+						//Если это первоначальный слой
+						if(layer===needchangelayer._first){
+						
+							//Пробежим снова, но теперь мы согласны на любые слои (не только базовые)
+							while((e.layer=controlLayers.getNextLayer(layer)))
+								layer = e.layer;
+							
+							//Создадим объект для хранения крэш-состояний
+							needchangelayer._isFails=needchangelayer._isFails||[];
+							//Запишим в него первоначальный слой
+							needchangelayer._isFails[keyFail]=[needchangelayer._first];
+							
+							//Если выявлен не базовый слой, выбирем его (запишем этот слой в крэш-состояние)
+							if(layer) {
+								controlLayers.selectLayer(layer);
+								needchangelayer._isFails[keyFail].push(layer);
+							}
+							
+							//Выбирем первоначальный слой
+							controlLayers.selectLayer(needchangelayer._first);
+							//Обнулим слой для последующей обработки
+							needchangelayer._first=null;
+						}
+						else //Выбирем базовый слой
+							controlLayers.selectLayer(layer);	
+					}
+					//Запомним слой с которого начали
+					needchangelayer._first=needchangelayer._first||e.layer;	
+				});
+				
+			return result;
+		},		
+		this.onAdd._self=this		
+	})
+	
 
 	//Константы ТИПЫ ИСТОЧНИКОВ ДАННЫХ ДЛЯ ПОИСКА
 	var SourceTypes={
@@ -729,6 +836,7 @@
 				return /^(([\d\x20]+\:?){1,6}\s*\,{0,1})+$/i.test(s);
 			}
 			
+			//Проверка на географическую координату
 			function validateGeoPoint(s){
 				return s.lat&&s.lng
 			}
@@ -1387,9 +1495,9 @@
 			return findByAddress(text);
 		}
 		
-		,search:function(list,callback){
+		,search:function(list,callback,options){
 			var self=this,
-				strCaNums=list instanceof Array?list.join(','):(typeof list==='string'?list:''),
+				strCadNums=list instanceof Array?list.join(','):(typeof list==='string'?list:''),
 				searchInList=function(s){
 					var sr=RegExp(s);
 					for(var i=0;i<list.length;i++){
@@ -1397,16 +1505,29 @@
 							return s;
 					}
 				};
+			
+			//Генерируем событие начала поиска
+			this._map.fire('searchstart',{query:strCadNums});
 				
-			this._search(strCaNums,function(data){				
-					if(data&&data.length){
+			this._search(strCadNums,function(data){				
+					if(data&&data.length>0){
 						
-						//Если выствлен маркер из поиска контрола, то снимем его						
-						if(self._markerLoc&&self._map.hasLayer(self._markerLoc)){														
+						//Если выставлен маркер из поиска контрола, то снимем его						
+						if(self._markerLoc&&self._map.hasLayer(self._markerLoc)){
+							self._markerLoc.closePopup();
 							self._map.removeLayer(self._markerLoc);
 						}
 						
-						var boundsObjects,mapObjects;
+						var boundsObjects,mapObjects,mapObject;
+						
+						//Если опция удаления предыдущего результата, то удалим все видимые маркеры
+						if(options&&options.clear&&self._layerMarkersSearch){
+							for(var i=0;i<self._layerMarkersSearch.length;i++){
+								self._layerMarkersSearch[i].closePopup();
+								self._map.removeLayer(self._layerMarkersSearch[i]);
+							}
+						}
+						
 						for(var i=0;i<data.length;i++){
 							var objData = data[i],
 								objTarget = self._getByType(objData),
@@ -1435,21 +1556,48 @@
 								callback(searchInList(cadNum)||cadNum,objData);
 							}
 						
+							
+							mapObject = null;
+							
+							if(objData._getJSON) {
+								mapObject = mapObject||{};
+								mapObject.attributesJSON = objData._getJSON();
+							}
+							
 							if(cadNum){
-								mapObjects = mapObjects || [];														
+								mapObject = mapObject||{};
+								mapObject.kadastrNo=cadNum;
+							}
+							
+							if(!$.isEmptyObject(title)){
+								mapObject = mapObject||{};
+								mapObject.name=title;	
+							}								
+							
+							if(mapObject){
+								mapObject.latLng=objLoc;
+								mapObjects = mapObjects || [];
+								mapObjects.push(mapObject);
+							}
+							
+							/*
+							if(cadNum){
+								mapObjects = mapObjects || [];
 								mapObjects.push({
 													kadastrNo:cadNum,
 													latLng:objLoc,
 													attributesJSON: objData._getJSON?objData._getJSON():null
 												});								
 							}
-							
+							*/
+							//Обработка клика по маркеру
 							marker.on('click',function(e){
 								this.closePopup();								
 								this.setPopupContent(self._buildContentPopup(this.options.data));
 							})
+							//Привязка к балуну
 							marker.bindPopup(self._popup);
-							//При удалении маркера с карты, удалим с росреестра
+							//При удалении маркера с карты, удалим с росреестра (слой выделения объектов росреестра)
 							marker.on('remove',function(){								
 								 if(this.options.cadNum){
 									this._map.fire('removeselectcadnum',{cadNum:this.options.cadNum});
@@ -1461,9 +1609,9 @@
 						if(boundsObjects)						
 							self._map.fitBounds(boundsObjects);						
 						
-						
-						self._map.fire('searchcomplete',{mapObjects:mapObjects});
-					}
+						//Генерируем событие окончания поиска
+						self._map.fire('searchcomplete',{ query:strCadNums, mapObjects:mapObjects,foundCount:data.length});
+					} else self._map.fire('searchcomplete',{query:strCadNums});//Отсутсвие результата, тоже результат
 			});
 		},
 		
