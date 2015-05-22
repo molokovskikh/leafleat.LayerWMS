@@ -1425,7 +1425,7 @@
 										}
 									}									
 								},
-								objExtent = createExtent(pkkData,pkkData.address)||L.latLngBounds(objLoc),
+								objExtent = createExtent(pkkData,pkkData.address)||L.latLngBounds(objLoc,objLoc),
 								title = objTarget&&objTarget._getText?objTarget._getText():objData[self._pval],			
 								marker = L.marker(objLoc,{title:title,data:objData,cadNum:cadNum,clickable:false}).addTo(self._map);
 								
@@ -1458,12 +1458,11 @@
 							self._layerMarkersSearch=self._layerMarkersSearch||[];
 							self._layerMarkersSearch.push(marker);
 						}
-						if(boundsObjects)
-							self._map.fitBounds(boundsObjects);
+						if(boundsObjects)						
+							self._map.fitBounds(boundsObjects);						
 						
-						if(mapObjects)
-							self._map.fire('searchcomplete',{mapObjects:mapObjects});
-
+						
+						self._map.fire('searchcomplete',{mapObjects:mapObjects});
 					}
 			});
 		},

@@ -222,6 +222,9 @@ new L.LatLngBounds(new L.LatLng(45.704553, 37.619781),new L.LatLng(55.794553, 49
 );
 
 L.Control.Zoom.mergeOptions({zoomInTitle:'Увеличить',zoomOutTitle:'Уменьшить'});
+L.TileLayer.mergeOptions({detectFails:60});
+
+
 
 map = new L.Map('map', {
         center: new L.LatLng(55.754553, 37.619781),
@@ -346,7 +349,7 @@ map.on('removeselectcadnum',function(e){
 });
 
 map.search=function(){
-        debugger
+      //  debugger
         if(this.rosreestrControl)
             return this.rosreestrControl.search.apply(this.rosreestrControl,arguments);
     };
@@ -355,9 +358,17 @@ map.search=function(){
 	
 map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){
 	debugger
-	controlMapBase.selectLayer('Яндекс');
+	map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){
+		debugger
+	//controlMapBase.selectLayer('Яндекс');
+	});
+
 });
 
+map.on('needchangelayer',function(e){
+	controlMapBase.selectLayer('Яндекс');
+	debugger	
+});
 
 
 

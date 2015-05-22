@@ -127,12 +127,11 @@ function over(){
 		},syncObjLoadTiles);
 		
 		
-		this.on('load',function(){
-			debugger
+		this.on('load',function(){			
 			//Загрузка всех тайлов
 			//Если процент битых тайлов превышает заданный
-			if(this.fails/this.tiles>this.options.detectFails){
-				this.fire('needchangelayer',this);
+			if(this.fails/this.tiles>this.layer.options.detectFails){
+				this.layer._map.fire('needchangelayer',this);
 			}
 		},syncObjLoadTiles);
 	}
