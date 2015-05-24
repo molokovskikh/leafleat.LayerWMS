@@ -246,7 +246,8 @@ map = new L.Map('map', {
 				}
 			},
 			clickable:false
-        }
+        },
+		expandControl:true
 		//,animate:false
 		,attributionControl:false		
 });
@@ -315,22 +316,30 @@ map.search=function(){
             return this.rosreestrControl.search.apply(this.rosreestrControl,arguments);
     };
 
-	
-	
-map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){
-	debugger
-	map.search('Абракадабра',function(key,data){
-		debugger
-	//controlMapBase.selectLayer('Яндекс');
-	},
-	{clear:false}
-	);
 
+	
+map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){	
 });
 
 
+setTimeout(function(){		
+		map.search('парад',{clear:false});
+},4000);
 
 
+//map.search('Абракадабра',{clear:false});
+setTimeout(function(){		
+		map.search('42:30:0302064:43',{clear:true});
+},5000);
+
+
+//map.search('бракадабр',{clear:false});
+
+
+//setTimeout(function(){
+//map.search(null,{fromHistory:-1,clear:true})
+//}
+//,20000);
 
 //
 //saumi.getLayers().up('grounds');

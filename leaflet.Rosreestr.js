@@ -29,6 +29,39 @@
     if(!L.CRS.EPSG3857.unproject)
         L.CRS.EPSG3857.unproject=function(p){ return L.CRS.EPSG3857.projection.unproject(p.divideBy(L.Projection.Mercator.R_MAJOR)) };
 
+	//Контрол возврата к первоначальным настройкам
+	var ControlExpand = L.Control.extend({	
+		options:{
+			position:'topleft',
+			hint:'Расположить найденные объекты на карте',
+			direct:'first' //Направление позиционирования истории (по умолчанию позиционируется на первый результат поиска, иначе на последний)
+		},
+		 initialize: function (options) {      
+			L.Util.setOptions(this, options);
+		},
+		onAdd:function(map){		
+			var container = L.DomUtil.create('div','leaflet-control-expand'),
+				a = L.DomUtil.create('a','',container);			
+			L.DomUtil.create('div','',a);
+			a.title=this.options.hint;
+			L.DomEvent.on(a,'click',function(e){				
+				debugger
+				this._map.search(null,{fromHistory:this.options.direct==='first'?-1:0});
+			},this);
+			return container;
+		},
+		onRemove:function(map){
+			
+		}
+	});
+
+	L.Map.addInitHook(function () {
+        if (this.options.expandControl) {
+            this.expandControl=new ControlExpand();
+            this.addControl(this.expandControl);
+        }
+    });	
+	
 	//Расширим контрол управления слоями		
 	L.Control.Layers.include({
 		//Получить слой по имени
@@ -97,6 +130,7 @@
 	});
 
 
+	//Функционал для определения крэша тайлового слоя
 	L.Control.Layers.addInitHook(function(){
 		
 		this.onAdd=function onAdd(map) {			
@@ -1287,7 +1321,7 @@
 											mixed[getKeyPType(o,ptype)]=getByType(o);											
 											$.extend(dataItem,mixed);
 											
-											if(dataItem===controlSearch._cache[dataItem[pval]]){												
+											if(dataItem===(controlSearch._cache&&(dataItem[pval]) in controlSearch._cache&&controlSearch._cache[dataItem[pval]])){
 												console.log(controlSearch._cache[dataItem[pval]]);
 											}
 											if(controlSearch._markerLoc){
@@ -1298,7 +1332,7 @@
 													controlSearch._markerLoc.setPopupContent(controlSearch._buildContentPopup(controlSearch._cache[dataItem[pval]]))
 													},1000);
 												};
-												//Если маркер есть на карте, то добавим обновим у него связанный контент
+												//Если маркер есть на карте, то обновим у него связанный контент
 												if(controlSearch._map.hasLayer(controlSearch._markerLoc))
 													fnReadyInPlaceMap();
 												else  //Иначе перехватим момент добавления на карту, и тогда уже обновим контент
@@ -1337,8 +1371,9 @@
 						if(data&&data.length>0) {
 							for(var i=0;i<data.length;i++){
 								dataItem=data[i];
-								dataItemJoin();
+								dataItemJoin();								
 							}
+							result.resolve(data);
 						}						
 					};
 					
@@ -1445,10 +1480,10 @@
 				return result;
 			}
 			
-			
+			var result;
 			//Проверка на кадастровый номер
 			if(validateKadastrNo(text)||validateGeoPoint(text)) {
-				var result=findByKadastrNo(text);
+				result=findByKadastrNo(text);
 				result.then(
 							fnCallback,            
 							function(e){
@@ -1489,13 +1524,17 @@
 								}
 							}
 						);
-				return result;
-			}
+				
+			} else			
+				result=findByAddress(text);			
 			
-			return findByAddress(text);
+			return result;
 		}
 		
 		,search:function(list,callback,options){
+			options=typeof callback!=='function'&&!options&&callback?callback:options;
+			callback=typeof callback!=='function'?null:callback;
+			
 			var self=this,
 				strCadNums=list instanceof Array?list.join(','):(typeof list==='string'?list:''),
 				searchInList=function(s){
@@ -1504,12 +1543,10 @@
 						if(sr.test(list[i]))
 							return s;
 					}
-				};
+				},				
+				fireEvent=!(options&&options.fromHistory);
 			
-			//Генерируем событие начала поиска
-			this._map.fire('searchstart',{query:strCadNums});
-				
-			this._search(strCadNums,function(data){				
+			function searchCallback(data){				
 					if(data&&data.length>0){
 						
 						//Если выставлен маркер из поиска контрола, то снимем его						
@@ -1521,7 +1558,7 @@
 						var boundsObjects,mapObjects,mapObject;
 						
 						//Если опция удаления предыдущего результата, то удалим все видимые маркеры
-						if(options&&options.clear&&self._layerMarkersSearch){
+						if(options&&(options.clear||options.fromHistory)&&self._layerMarkersSearch){
 							for(var i=0;i<self._layerMarkersSearch.length;i++){
 								self._layerMarkersSearch[i].closePopup();
 								self._map.removeLayer(self._layerMarkersSearch[i]);
@@ -1610,9 +1647,83 @@
 							self._map.fitBounds(boundsObjects);						
 						
 						//Генерируем событие окончания поиска
-						self._map.fire('searchcomplete',{ query:strCadNums, mapObjects:mapObjects,foundCount:data.length});
-					} else self._map.fire('searchcomplete',{query:strCadNums});//Отсутсвие результата, тоже результат
-			});
+						if(fireEvent)
+							self._map.fire('searchcomplete',{ query:strCadNums, mapObjects:mapObjects,foundCount:data.length});
+					} else 
+						if(fireEvent)
+							self._map.fire('searchcomplete',{query:strCadNums});//Отсутсвие результата, тоже результат
+			}
+			
+			if(options&&options.fromHistory){
+				
+				var v,
+					c = typeof options.fromHistory==='number'?options.fromHistory:1,
+					i = self._historySearch&&self._historySearch.length?self._historySearch.length - (c<0?(c=self._historySearch.length):c):0;
+										
+				if(options.clear) {
+					debugger
+					for(i=0;i<c;i++){
+						v=self._historySearch&&self._historySearch.pop();
+					}
+				} else {
+					
+					v =  i>=0?self._historySearch.length>0&&self._historySearch[i]:v;
+				}
+				
+				if(v)
+					searchCallback(v);
+				return;
+			}
+			
+			//Генерируем событие начала поиска
+			if(fireEvent)
+				this._map.fire('searchstart',{query:strCadNums});
+			//Выполним поиск
+			this._search(strCadNums,searchCallback)
+				.pipe(function(data)
+				{
+					if(data){
+						
+						function existInArray(a,b){							
+							if(a&&b&&a.length>0)
+							{
+								var r=false;
+								for(var i=0;i<a.length;i++){
+									if(a[i]===b)
+										return true;								
+								}
+							}
+							return false;
+						}
+						
+						//Сохраним историю поиска
+						self._historySearch=self._historySearch||[];
+						var exist=existInArray(self._historySearch,data);
+												
+							
+						if(!exist) {							
+						
+													
+							//Если не указана опция очистки, то включим предыдущий результат
+							if(!(options&&options.clear)&&self._historySearch.length>0){
+								var prev_data=self._historySearch[self._historySearch.length-1];
+								if(prev_data&&prev_data.length>0){
+									
+									for(var r=0;r<prev_data.length;r++){
+										if(!existInArray(data,prev_data[r])){
+											data.push(prev_data[r]);
+										}
+									}
+								}
+							}
+							
+							self._historySearch.push(data);
+							data._searchText = strCadNums;
+						}
+					}
+										
+					return data;
+				});
 		},
 		
 		_clickMap:function(e){
@@ -1654,8 +1765,13 @@
             this.rosreestrControl = L.control.rosreestr(this.options.Rosreestr);
             this.addControl(this.rosreestrControl);
         }
+		
+		
     });
 
+	
+	
+	
     L.control.rosreestr=function(options){
         return nsControl.Rosreestr.create(options);
     }
