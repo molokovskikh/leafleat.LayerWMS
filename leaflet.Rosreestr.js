@@ -57,7 +57,7 @@
 
 	L.Map.addInitHook(function () {
         if (this.options.expandControl) {
-            this.expandControl=new ControlExpand();
+            this.expandControl=new ControlExpand({direct:this.options.expandControl});
             this.addControl(this.expandControl);
         }
     });	
