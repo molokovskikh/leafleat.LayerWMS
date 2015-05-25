@@ -38,6 +38,7 @@
 		},
 		 initialize: function (options) {      
 			L.Util.setOptions(this, options);
+			this.options.direct=typeof this.options.direct==='boolean'&&this.options.direct?'first':this.options.direct;
 		},
 		onAdd:function(map){		
 			var container = L.DomUtil.create('div','leaflet-control-expand'),
@@ -55,12 +56,57 @@
 		}
 	});
 
+	//Контрол загрузки
+	var ControlLoading = L.Control.extend({	
+		options:{
+			position:'topleft',
+			hint:'Пожалуйста подождите...'
+		},
+		 initialize: function (options) {      
+			L.Util.setOptions(this, options);			
+		},
+		onAdd:function(map){		
+			var container = L.DomUtil.create('div','leaflet-control-loading'),
+				a = L.DomUtil.create('a','',container);			
+				loader = L.DomUtil.create('div','',a);
+				a.title=this.options.hint;
+			for(var i=0;i<8;i++) {
+				L.DomUtil.create('div','',loader);
+			}			
+			
+			return this._container=container;
+		},
+		onRemove:function(map){
+			
+		},
+		hide:function(){			
+			L.DomUtil.removeClass(this._container,'show');
+			L.DomUtil.addClass(this._container,'hide');
+			
+		},
+		show:function(){			
+			L.DomUtil.removeClass(this._container,'hide');
+			L.DomUtil.addClass(this._container,'show');
+		},
+		disable:function(){			
+			L.DomUtil.removeClass(this._container,'show');
+			L.DomUtil.addClass(this._container,'disable');
+		},
+		enable:function(){			
+			L.DomUtil.addClass(this._container,'show');
+			L.DomUtil.removeClass(this._container,'disable');
+		}
+		
+	});
+	
 	L.Map.addInitHook(function () {
-        if (this.options.expandControl) {
-            this.expandControl=new ControlExpand({direct:this.options.expandControl});
-            this.addControl(this.expandControl);
+        if (this.options.loadingControl) {
+            this.loadingControl=new ControlLoading();
+            this.addControl(this.loadingControl);
         }
     });	
+	
+	
 	
 	//Расширим контрол управления слоями		
 	L.Control.Layers.include({
@@ -1543,10 +1589,10 @@
 						if(sr.test(list[i]))
 							return s;
 					}
-				},				
-				fireEvent=!(options&&options.fromHistory);
+				};
 			
-			function searchCallback(data){				
+			function searchCallback(data){
+					var eventDataSearchComplete = {query:strCadNums};
 					if(data&&data.length>0){
 						
 						//Если выставлен маркер из поиска контрола, то снимем его						
@@ -1647,14 +1693,17 @@
 							self._map.fitBounds(boundsObjects);						
 						
 						//Генерируем событие окончания поиска
-						if(fireEvent)
-							self._map.fire('searchcomplete',{ query:strCadNums, mapObjects:mapObjects,foundCount:data.length});
-					} else 
-						if(fireEvent)
-							self._map.fire('searchcomplete',{query:strCadNums});//Отсутсвие результата, тоже результат
+						$.extend(eventDataSearchComplete,{ mapObjects: mapObjects, foundCount: data.length});						
+						
+						if(options&&options.fromHistory)
+							$.extend(eventDataSearchComplete,{ isHistory:true });						
+					} 					
+					
+					self._map.fire('searchcomplete',eventDataSearchComplete);
+					
 			}
 			
-			if(options&&options.fromHistory){
+			if(options&&options.fromHistory) {
 				
 				var v,
 					c = typeof options.fromHistory==='number'?options.fromHistory:1,
@@ -1670,14 +1719,16 @@
 					v =  i>=0?self._historySearch.length>0&&self._historySearch[i]:v;
 				}
 				
+				this._map.fire('searchstart',{isHistory:true});
+				
 				if(v)
 					searchCallback(v);
 				return;
-			}
+			} 
 			
-			//Генерируем событие начала поиска
-			if(fireEvent)
-				this._map.fire('searchstart',{query:strCadNums});
+			//Генерируем событие начала поиска			
+			this._map.fire('searchstart',{query:strCadNums});
+			
 			//Выполним поиск
 			this._search(strCadNums,searchCallback)
 				.pipe(function(data)

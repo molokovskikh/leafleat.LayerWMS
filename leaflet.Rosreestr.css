@@ -141,3 +141,203 @@
   background-size: 25px 25px;
   background-repeat: no-repeat;  
 }
+
+
+
+.leaflet-control-loading {
+position:relative;
+width:32px;
+height:32px;
+}
+
+
+
+.leaflet-control-loading.disable  a >div>div {
+	position: absolute;	
+	background-color:rgba(77, 69, 77, 0.2)
+	-webkit-transition:background-color  3s ease-out 0s;
+	/*-moz-animation-duration: 0.1s;
+	-moz-animation-iteration-count: 1;
+	-webkit-animation-duration: 1.6s;
+	-webkit-animation-iteration-count: 8;
+	-ms-animation-duration: 0.1s;
+	-ms-animation-iteration-count: 1;
+	-o-animation-duration: 0.1s;
+	-o-animation-iteration-count: 1;
+	animation-duration: 0.1s;
+	animation-iteration-count: 1;	
+	*/
+}
+
+.leaflet-control-loading.hide {		
+	visibility:hidden;
+	-webkit-transition:visibility 2s ease-out 0s;
+}
+
+.leaflet-control-loading  a >div>div {
+
+background-color:rgba(77, 69, 77, 0.2);
+width:2px;
+height:2px;
+visibility:hidden;
+
+}
+
+.leaflet-control-loading.show  a >div>div {
+background-color:rgba(77, 69, 77, 1);
+-webkit-transition:background-color 2s ease-out 0s;	
+visibility:visible;
+position:absolute;
+-moz-border-radius:10px;
+-moz-animation-name:bounce_circular3dG;
+-moz-animation-duration:1.6s;
+-moz-animation-iteration-count:infinite;
+-moz-animation-direction:normal;
+-webkit-border-radius:10px;
+-webkit-animation-name:bounce_circular3dG;
+-webkit-animation-duration:1.6s;
+-webkit-animation-iteration-count:infinite;
+-webkit-animation-direction:normal;
+-ms-border-radius:10px;
+-ms-animation-name:bounce_circular3dG;
+-ms-animation-duration:1.6s;
+-ms-animation-iteration-count:infinite;
+-ms-animation-direction:normal;
+-o-border-radius:10px;
+-o-animation-name:bounce_circular3dG;
+-o-animation-duration:1.6s;
+-o-animation-iteration-count:infinite;
+-o-animation-direction:normal;
+border-radius:10px;
+animation-name:bounce_circular3dG;
+animation-duration:1.6s;
+animation-iteration-count:infinite;
+animation-direction:normal;
+}
+
+
+
+.leaflet-control-loading  a >div :nth-child(1) {
+left:13px;
+top:2px;
+-moz-animation-delay:1.8s;
+-webkit-animation-delay:1.8s;
+-ms-animation-delay:1.8s;
+-o-animation-delay:1.8s;
+animation-delay:1.8s;
+}
+
+.leaflet-control-loading  a >div :nth-child(2) {
+left:20px;
+top:8px;
+-moz-animation-delay:1.6s;
+-webkit-animation-delay:1.6s;
+-ms-animation-delay:1.6s;
+-o-animation-delay:1.6s;
+animation-delay:1.6s;
+}
+
+.leaflet-control-loading a >div :nth-child(3) {
+left:24px;
+top:15px;
+-moz-animation-delay:1.4s;
+-webkit-animation-delay:1.4s;
+-ms-animation-delay:1.4s;
+-o-animation-delay:1.4s;
+animation-delay:1.4s;
+}
+
+.leaflet-control-loading a >div :nth-child(4) {
+left:22px;
+top:22px;
+-moz-animation-delay:1.2s;
+-webkit-animation-delay:1.2s;
+-ms-animation-delay:1.2s;
+-o-animation-delay:1.2s;
+animation-delay:1.2s;
+}
+
+.leaflet-control-loading a >div :nth-child(5) {
+left:14px;
+top:24px;
+-moz-animation-delay:1s;
+-webkit-animation-delay:1s;
+-ms-animation-delay:1s;
+-o-animation-delay:1s;
+animation-delay:1s;
+}
+
+.leaflet-control-loading a >div :nth-child(6) {
+left:3px;
+top:16px;
+-moz-animation-delay:0.8s;
+-webkit-animation-delay:0.8s;
+-ms-animation-delay:0.8s;
+-o-animation-delay:0.8s;
+animation-delay:0.8s;
+}
+
+.leaflet-control-loading  a >div :nth-child(7){
+left:0px;
+top:5px;
+-moz-animation-delay:0.6s;
+-webkit-animation-delay:0.6s;
+-ms-animation-delay:0.6s;
+-o-animation-delay:0.6s;
+animation-delay:0.6s;
+}
+
+.leaflet-control-loading a >div :nth-child(8) {
+left:6px;
+top:0px;
+-moz-animation-delay:2s;
+-webkit-animation-delay:2s;
+-ms-animation-delay:2s;
+-o-animation-delay:2s;
+animation-delay:2s;
+}
+
+@-moz-keyframes bounce_circular3dG{
+0%{
+-moz-transform:scale(1)}
+
+100%{
+-moz-transform:scale(2.4)}
+
+}
+
+
+@-webkit-keyframes bounce_circular3dG{
+0%{
+-webkit-transform:scale(1)}
+
+100%{
+-webkit-transform:scale(2.4)}
+
+}
+
+@-ms-keyframes bounce_circular3dG{
+0%{
+-ms-transform:scale(1)}
+
+100%{
+-ms-transform:scale(2.4)}
+
+}
+
+@-o-keyframes bounce_circular3dG{
+0%{
+-o-transform:scale(1)}
+
+100%{
+-o-transform:scale(2.4)}
+
+}
+
+@keyframes bounce_circular3dG{
+0%{
+transform:scale(1)}
+
+100%{
+transform:scale(2.4)}
+}

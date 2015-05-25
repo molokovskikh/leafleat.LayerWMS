@@ -247,7 +247,8 @@ map = new L.Map('map', {
 			},
 			clickable:false
         },
-		expandControl:true
+		expandControl:true,
+		loadingControl:true
 		//,animate:false
 		,attributionControl:false		
 });
