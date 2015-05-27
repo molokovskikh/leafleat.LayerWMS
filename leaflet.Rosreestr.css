@@ -150,6 +150,11 @@
  height:32px; 
 }
 
+.leaflet-control-loading a >div{
+ width:32px;
+ height:32px;
+}
+
 .leaflet-control-loading.show,
 .leaflet-control-loading.show.disable,
 .leaflet-control-loading.disable {
