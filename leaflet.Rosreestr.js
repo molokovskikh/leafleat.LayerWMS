@@ -74,27 +74,44 @@
 				L.DomUtil.create('div','',loader);
 			}			
 			
+			L.DomEvent.on(container, L.DomUtil.TRANSITION_END,this._transitionEnd,this);
+			
 			return this._container=container;
 		},
 		onRemove:function(map){
 			
 		},
-		hide:function(){			
-			L.DomUtil.removeClass(this._container,'show');
-			L.DomUtil.addClass(this._container,'hide');
+		_transitionEnd:function(e){
+			var value;
+			if(
+				(e.propertyName==='opacity'&&((value=Math.round(parseFloat(L.DomUtil.getStyle(e.target,e.propertyName))*100)/100)&&(value==0||value<=.2)))
+			  ||(e.propertyName==='visibility'&&(value=L.DomUtil.getStyle(e.target,e.propertyName))==='hidden')
+			) {
+				//debugger
+				L.DomUtil.addClass(this._container,'clear-animation');
+			}
+			
 			
 		},
+		hide:function(){									
+			L.DomUtil.addClass(this._container,'hide');
+		},
 		show:function(){			
+			L.DomUtil.removeClass(this._container,'clear-animation');
 			L.DomUtil.removeClass(this._container,'hide');
-			L.DomUtil.addClass(this._container,'show');
+			L.DomUtil.removeClass(this._container,'disable');
+			L.DomUtil.addClass(this._container,'show');						
 		},
 		disable:function(){			
-			L.DomUtil.removeClass(this._container,'show');
 			L.DomUtil.addClass(this._container,'disable');
 		},
-		enable:function(){			
-			L.DomUtil.addClass(this._container,'show');
+		enable:function(){
+			L.DomUtil.removeClass(this._container,'clear-animation');			
 			L.DomUtil.removeClass(this._container,'disable');
+			L.DomUtil.removeClass(this._container,'hide');
+			if(!L.DomUtil.hasClass(this._container,'show'))
+				this.show();
+			
 		}
 		
 	});

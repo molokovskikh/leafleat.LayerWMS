@@ -145,17 +145,25 @@
 
 
 .leaflet-control-loading {
-position:relative;
-width:32px;
-height:32px;
+ position:relative;
+ width:32px;
+ height:32px; 
+}
+
+.leaflet-control-loading.show,
+.leaflet-control-loading.show.disable,
+.leaflet-control-loading.disable {
+ background-color: #fff;
+ border-radius: 4px;
+ opacity:.45;
 }
 
 
 
-.leaflet-control-loading.disable  a >div>div {
-	position: absolute;	
-	background-color:rgba(77, 69, 77, 0.2)
-	-webkit-transition:background-color  3s ease-out 0s;
+.leaflet-control-loading.disable  a >div>div,
+.leaflet-control-loading.show.disable  a >div>div {	
+	opacity:0.2;	
+	-webkit-transition:opacity 3s ease-out 0s;
 	/*-moz-animation-duration: 0.1s;
 	-moz-animation-iteration-count: 1;
 	-webkit-animation-duration: 1.6s;
@@ -169,14 +177,31 @@ height:32px;
 	*/
 }
 
+.leaflet-control-loading.show.hide,
 .leaflet-control-loading.hide {		
 	visibility:hidden;
-	-webkit-transition:visibility 2s ease-out 0s;
+	-webkit-transition:visibility 3s ease-out 0s;
 }
+.leaflet-control-loading.hide  a >div>div,
+.leaflet-control-loading.show.hide  a >div>div {	
+	visibility:hidden;
+	opacity:0;	
+	-webkit-transition:opacity 2s ease-out 0s,visibility 3s ease-out 0s;
+}
+
+.leaflet-control-loading.clear-animation   a >div>div,
+.leaflet-control-loading.show.hide.clear-animation  a >div>div,
+.leaflet-control-loading.show.hide.clear-animation  a >div>div,
+.leaflet-control-loading.disable.clear-animation  a >div>div,
+.leaflet-control-loading.disable.clear-animation   a >div>div{
+	-webkit-animation:inherit;
+}		
+
 
 .leaflet-control-loading  a >div>div {
 
-background-color:rgba(77, 69, 77, 0.2);
+background-color:rgba(77, 69, 77,1);
+opacity:.2;
 width:2px;
 height:2px;
 visibility:hidden;
@@ -184,8 +209,8 @@ visibility:hidden;
 }
 
 .leaflet-control-loading.show  a >div>div {
-background-color:rgba(77, 69, 77, 1);
--webkit-transition:background-color 2s ease-out 0s;	
+opacity:1;
+-webkit-transition:opacity 2s ease-out 0s;	
 visibility:visible;
 position:absolute;
 -moz-border-radius:10px;
@@ -218,8 +243,8 @@ animation-direction:normal;
 
 
 .leaflet-control-loading  a >div :nth-child(1) {
-left:13px;
-top:2px;
+left:16px;
+top:5px;
 -moz-animation-delay:1.8s;
 -webkit-animation-delay:1.8s;
 -ms-animation-delay:1.8s;
@@ -228,8 +253,8 @@ animation-delay:1.8s;
 }
 
 .leaflet-control-loading  a >div :nth-child(2) {
-left:20px;
-top:8px;
+left:23px;
+top:11px;
 -moz-animation-delay:1.6s;
 -webkit-animation-delay:1.6s;
 -ms-animation-delay:1.6s;
@@ -238,8 +263,8 @@ animation-delay:1.6s;
 }
 
 .leaflet-control-loading a >div :nth-child(3) {
-left:24px;
-top:15px;
+left:27px;
+top:18px;
 -moz-animation-delay:1.4s;
 -webkit-animation-delay:1.4s;
 -ms-animation-delay:1.4s;
@@ -248,8 +273,8 @@ animation-delay:1.4s;
 }
 
 .leaflet-control-loading a >div :nth-child(4) {
-left:22px;
-top:22px;
+left:25px;
+top:26px;
 -moz-animation-delay:1.2s;
 -webkit-animation-delay:1.2s;
 -ms-animation-delay:1.2s;
@@ -258,8 +283,8 @@ animation-delay:1.2s;
 }
 
 .leaflet-control-loading a >div :nth-child(5) {
-left:14px;
-top:24px;
+left:17px;
+top:27px;
 -moz-animation-delay:1s;
 -webkit-animation-delay:1s;
 -ms-animation-delay:1s;
@@ -268,8 +293,8 @@ animation-delay:1s;
 }
 
 .leaflet-control-loading a >div :nth-child(6) {
-left:3px;
-top:16px;
+left:6px;
+top:19px;
 -moz-animation-delay:0.8s;
 -webkit-animation-delay:0.8s;
 -ms-animation-delay:0.8s;
@@ -278,8 +303,8 @@ animation-delay:0.8s;
 }
 
 .leaflet-control-loading  a >div :nth-child(7){
-left:0px;
-top:5px;
+left:3px;
+top:8px;
 -moz-animation-delay:0.6s;
 -webkit-animation-delay:0.6s;
 -ms-animation-delay:0.6s;
@@ -288,8 +313,8 @@ animation-delay:0.6s;
 }
 
 .leaflet-control-loading a >div :nth-child(8) {
-left:6px;
-top:0px;
+left:9px;
+top:3px;
 -moz-animation-delay:2s;
 -webkit-animation-delay:2s;
 -ms-animation-delay:2s;
