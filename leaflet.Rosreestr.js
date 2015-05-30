@@ -49,10 +49,15 @@
 				debugger
 				this._map.search(null,{fromHistory:this.options.direct==='first'?-1:0});
 			},this);
-			return container;
+			return this._container=container;
 		},
-		onRemove:function(map){
-			
+		visible:function(state){
+			if(this._container){
+				if(state)
+					L.DomUtil.addClass(this._container,'visible');
+				else
+					L.DomUtil.removeClass(this._container,'visible');
+			}
 		}
 	});
 
@@ -60,61 +65,85 @@
 	var ControlLoading = L.Control.extend({	
 		options:{
 			position:'topleft',
-			hint:'Пожалуйста подождите...'
+			hint:'Пожалуйста подождите...',
+			class:null,//Если устанавливается свой стиль, то рекомендуется не за быть поставить background=false
+			background:true
 		},
 		 initialize: function (options) {      
-			L.Util.setOptions(this, options);			
+			L.Util.setOptions(this, options);
 		},
 		onAdd:function(map){		
 			var container = L.DomUtil.create('div','leaflet-control-loading'),
-				a = L.DomUtil.create('a','',container);			
+				a = L.DomUtil.create('a','',container);
 				loader = L.DomUtil.create('div','',a);
 				a.title=this.options.hint;
-			for(var i=0;i<8;i++) {
+			for(var i=0;i<8;i++){
 				L.DomUtil.create('div','',loader);
-			}			
-			
+			}
 			L.DomEvent.on(container, L.DomUtil.TRANSITION_END,this._transitionEnd,this);
+			this._anchor = a;
+			
+			this._hintVisible(false);
+			
+			if(this.options.background)
+				L.DomUtil.addClass(container,'background');
+			
+			if(this.options.class)
+				L.DomUtil.addClass(container,this.options.class);					
 			
 			return this._container=container;
 		},
-		onRemove:function(map){
-			
-		},
-		_transitionEnd:function(e){
-			var value;
-			if(
-				(e.propertyName==='opacity'&&((value=Math.round(parseFloat(L.DomUtil.getStyle(e.target,e.propertyName))*100)/100)&&(value==0||value<=.2)))
-			  ||(e.propertyName==='visibility'&&(value=L.DomUtil.getStyle(e.target,e.propertyName))==='hidden')
-			) {
-				//debugger
-				L.DomUtil.addClass(this._container,'clear-animation');
-			}
-			
-			
-		},
+
+		//Скрыть контрол
 		hide:function(){									
 			L.DomUtil.addClass(this._container,'hide');
+			this._hintVisible(false);
 		},
+		//Показать контрол
 		show:function(){			
+			this._hintVisible(true);
 			L.DomUtil.removeClass(this._container,'clear-animation');
 			L.DomUtil.removeClass(this._container,'hide');
 			L.DomUtil.removeClass(this._container,'disable');
 			L.DomUtil.addClass(this._container,'show');						
 		},
-		disable:function(){			
+		
+		disable:function(){
 			L.DomUtil.addClass(this._container,'disable');
-		},
+		},		
 		enable:function(){
 			L.DomUtil.removeClass(this._container,'clear-animation');			
 			L.DomUtil.removeClass(this._container,'disable');
 			L.DomUtil.removeClass(this._container,'hide');
 			if(!L.DomUtil.hasClass(this._container,'show'))
-				this.show();
-			
+				this.show();			
+		},
+		//Установить подсказку
+		setHint:function(text){
+			this._anchor.title = text||this.options.hint;
+		},
+		//Видимость подсказки
+		_hintVisible:function(state){
+			this._anchor.style.display=state?'initial':'none';
+		},
+		//Завершение перехода
+		_transitionEnd:function(e){
+			var value;
+			if(
+				(e.propertyName==='opacity'&&((value=Math.round(parseFloat(L.DomUtil.getStyle(e.target,e.propertyName))*100)/100)&&(value==0||value<=.2)))
+			  ||(e.propertyName==='visibility'&&(value=L.DomUtil.getStyle(e.target,e.propertyName))==='hidden')
+			) {				
+				L.DomUtil.addClass(this._container,'clear-animation');
+			}			
 		}
-		
 	});
+	
+	L.Map.addInitHook(function () {
+        if (this.options.expandControl) {
+            this.expandControl=new ControlExpand();
+            this.addControl(this.expandControl);
+        }
+    });	
 	
 	L.Map.addInitHook(function () {
         if (this.options.loadingControl) {
@@ -396,12 +425,22 @@
 			debugger
 			return L.Popup.prototype.setContent.apply(this,arguments);
 		},
-		_adjustPan:function(){			
-			this._updateEnd();
+		_moveend:function(){
+			this._moveend._busy=false;
+			this._map.off('moveend',this._moveend,this);
+		},
+		_adjustPan:function(){
+			if(!this._moveend._busy&&(!this._map._panAnim||(this._map._mapPane&&!L.DomUtil.hasClass(this._map._mapPane, 'leaflet-pan-anim')))){			
+				this._map.on('moveend',this._moveend,this);
+				this._moveend._busy=true;
+				this._updateEnd();
+			}
 			var result = L.Popup.prototype._adjustPan.apply(this,arguments);			
 			return result;
 		},
 		_updateEnd:function(){
+			
+						
 			this.fire('updateend');
 			var content=$('.rosreestr-search-popup-content');
 			if(content.length>0) {				
@@ -434,7 +473,7 @@
 						popup._resize(popup._contentNode||tabContent.closest('.leaflet-popup-content'));
 					debugger
 			}
-			this._calc_optimalWidth();
+			this._calc_optimalWidth();			
 		},		
 		_updateWithoutContent:function(){
 			this._container.style.visibility = 'hidden';
@@ -445,13 +484,21 @@
 			this._adjustPan();			
 		},		
 		_calc_optimalWidth:function(){
-			var scroolBarWidh = $('.scroll-container').get(0).offsetWidth
-			-$('.scroll-container').get(0).clientWidth
-			-parseInt($('.scroll-container').css('padding-left'))
-			-parseInt($('.scroll-container').css('padding-right')),
-			newSize=$('.scroll-container').closest('.leaflet-popup-content').width()+scroolBarWidh;
-			if(this._map.getSize().x>=newSize){
-				$('.scroll-container').closest('.leaflet-popup-content').width(newSize);
+			var 
+			s =$('.scroll-container'),
+			el=s.get(0),
+			offsetWidth=el.offsetWidth,
+			clientWidth=el.clientWidth,
+			scrollWidth=el.scrollWidth,
+			scrollBarWidth = offsetWidth-clientWidth
+			-parseInt(s.css('padding-left'))
+			-parseInt(s.css('padding-right')),
+			oldSize=s.closest('.leaflet-popup-content').width(),			
+			testWidth = scrollWidth==clientWidth?0:scrollBarWidth-(scrollWidth-clientWidth),
+			newSize=oldSize+testWidth,
+			mapWidth=this._map.getSize().x;
+			if(newSize!=oldSize&&mapWidth>=newSize){				
+				$('.scroll-container').closest('.leaflet-popup-content').width(newSize);				
 			}
 		},
 		_resize:function(e,contentPopup){
@@ -489,8 +536,6 @@
 					tabContentOffset=calcOffset(tabContent,popup),						
 					calcHeight=h-contentPopupOffset.bottom-tabContentOffset.top;
 				
-				debugger
-				
 				if(contentPopupOffset.bottom>=0){
 					
 					if($('div.active',tabContent).height()<calcHeight){
@@ -506,12 +551,14 @@
 							tabContent.css('height','');
 						}
 					}
+					/*
 					if(popup.height()==h){
 						if($('div.active',tabContent).height()>calcHeight){
 							debugger
 							//$('div.active',tabContent).height(calcHeight);
 						}
 					}
+					*/
 					
 				} else {
 					
@@ -536,8 +583,8 @@
 	
 	
 	//Сформировать ключ для доступа к типизированному источником данных объекту кэша
-	function getKeyPType(dst,ptype){
-			return '_'+(dst[ptype]||'');
+	function getKeyPType(dst,ptype){			
+			return '_'+((dst&&ptype&&dst[ptype])||'');
 		}
 	
 	//Контрол поиска
@@ -1786,6 +1833,10 @@
 							}
 							
 							self._historySearch.push(data);
+							if(self._map&&self._map.expandControl){
+								debugger
+								self._map.expandControl.visible(true);
+							}
 							data._searchText = strCadNums;
 						}
 					}

@@ -128,6 +128,11 @@
 
 .leaflet-control-expand {
   clear: right;
+  display:none;
+ }
+ 
+ .leaflet-control-expand.visible{
+  display:initial;
  }
  
 .leaflet-control-expand >a>div{
@@ -136,7 +141,7 @@
   box-shadow: 0 1px 5px rgba(0,0,0,0.4);
   border-radius: 5px;
   background-color: rgba(255, 255, 255, 0.6);
-  background-image: url('lib/images/expand.svg');
+  background-image: url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIiBoZWlnaHQ9IjMycHgiIHdpZHRoPSIzMnB4IiB4bWw6c3BhY2U9InByZXNlcnZlIj4NCjxnPg0KPHBvbHlnb24gZmlsbD0iIzIzMUYyMCIgcG9pbnRzPSIyMi42NTgsMTQuNjE5IDI0Ljg2OCwxMi40MDkgMjcuMDc4LDEwLjE5OSAyOS4yODgsNy45ODkgMjkuMzg1LDcuODkzIDMyLjkwNSwxMS40MTMgMzMuMjEyLDEuMzAzIDIzLjEwMSwxLjYxIDI2LjYyMiw1LjEzIDI2LjUyNSw1LjIyNyAyNC4zMTUsNy40MzcgMjIuMTA1LDkuNjQ2IDE5Ljg5NiwxMS44NTYgMTkuNTYzLDEyLjE5IDIyLjMyNCwxNC45NTIiLz4NCjxwb2x5Z29uIGZpbGw9IiMyMzFGMjAiIHBvaW50cz0iMTIuNTk2LDkuNjQ2IDEwLjM4Niw3LjQzNyA4LjE3Niw1LjIyNyA4LjA4LDUuMTMgMTEuNiwxLjYxIDEuNDg5LDEuMzAzIDEuNzk2LDExLjQxMyA1LjMxNyw3Ljg5MyA1LjQxNCw3Ljk4OSA3LjYyMywxMC4xOTkgOS44MzMsMTIuNDA5IDEyLjA0MiwxNC42MTkgMTIuMzc3LDE0Ljk1MiAxNS4xMzksMTIuMTkgMTQuODA2LDExLjg1NiIvPg0KPHBvbHlnb24gZmlsbD0iIzIzMUYyMCIgcG9pbnRzPSIyOS4zODUsMjYuNDM2IDI5LjI4OCwyNi4zNCAyNy4wNzgsMjQuMTMgMjQuODY4LDIxLjkyIDIyLjY1OCwxOS43MDkgMjIuMzI0LDE5LjM3NiAxOS41NjMsMjIuMTM5IDE5Ljg5NiwyMi40NzIgMjIuMTA1LDI0LjY4MiAyNC4zMTUsMjYuODkyIDI2LjUyNSwyOS4xMDIgMjYuNjIyLDI5LjE5OCAyMy4xMDEsMzIuNzE5IDMzLjIxMiwzMy4wMjUgMzIuOTA1LDIyLjkxNiIvPg0KPHBvbHlnb24gZmlsbD0iIzIzMUYyMCIgcG9pbnRzPSIxMi4wNDIsMTkuNzA5IDkuODMzLDIxLjkyIDcuNjIzLDI0LjEzIDUuNDE0LDI2LjM0IDUuMzE3LDI2LjQzNyAxLjc5NiwyMi45MTYgMS40ODksMzMuMDI1IDExLjYsMzIuNzE5IDguMDc5LDI5LjE5OCA4LjE3NiwyOS4xMDIgMTAuMzg2LDI2Ljg5MiAxMi41OTYsMjQuNjgyIDE0LjgwNiwyMi40NzIgMTUuMTM5LDIyLjEzOSAxMi4zNzcsMTkuMzc2Ii8+DQo8L2c+DQo8L3N2Zz4=');
   background-position: 1px 1px;
   background-size: 25px 25px;
   background-repeat: no-repeat;  
@@ -155,43 +160,42 @@
  height:32px;
 }
 
-.leaflet-control-loading.show,
-.leaflet-control-loading.show.disable,
-.leaflet-control-loading.disable {
+.leaflet-control-loading.background.show,
+.leaflet-control-loading.background.show.disable,
+.leaflet-control-loading.background.disable {
  background-color: #fff;
  border-radius: 4px;
  opacity:.45;
 }
 
 
-
 .leaflet-control-loading.disable  a >div>div,
 .leaflet-control-loading.show.disable  a >div>div {	
 	opacity:0.2;	
 	-webkit-transition:opacity 3s ease-out 0s;
-	/*-moz-animation-duration: 0.1s;
-	-moz-animation-iteration-count: 1;
-	-webkit-animation-duration: 1.6s;
-	-webkit-animation-iteration-count: 8;
-	-ms-animation-duration: 0.1s;
-	-ms-animation-iteration-count: 1;
-	-o-animation-duration: 0.1s;
-	-o-animation-iteration-count: 1;
-	animation-duration: 0.1s;
-	animation-iteration-count: 1;	
-	*/
+	-moz-transition:opacity 3s ease-out 0s;
+	-ms-transition:opacity 3s ease-out 0s;
+	-o-transition:opacity 3s ease-out 0s;
+	transition:opacity 3s ease-out 0s;	
 }
 
 .leaflet-control-loading.show.hide,
 .leaflet-control-loading.hide {		
 	visibility:hidden;
 	-webkit-transition:visibility 3s ease-out 0s;
+	-moz-transition:visibility 3s ease-out 0s;
+	-ms-transition:visibility 3s ease-out 0s;
+	-o-transition:visibility 3s ease-out 0s;
+	transition:visibility 3s ease-out 0s;
 }
 .leaflet-control-loading.hide  a >div>div,
 .leaflet-control-loading.show.hide  a >div>div {	
 	visibility:hidden;
 	opacity:0;	
 	-webkit-transition:opacity 2s ease-out 0s,visibility 3s ease-out 0s;
+	-moz-transition:opacity 2s ease-out 0s,visibility 3s ease-out 0s;
+	-o-transition:opacity 2s ease-out 0s,visibility 3s ease-out 0s;
+	transition:opacity 2s ease-out 0s,visibility 3s ease-out 0s;
 }
 
 .leaflet-control-loading.clear-animation   a >div>div,
@@ -200,6 +204,10 @@
 .leaflet-control-loading.disable.clear-animation  a >div>div,
 .leaflet-control-loading.disable.clear-animation   a >div>div{
 	-webkit-animation:inherit;
+	-moz-animation:inherit;
+	-ms-animation:inherit;
+	-o-animation:inherit;
+	animation:inherit;
 }		
 
 
@@ -370,4 +378,12 @@ transform:scale(1)}
 
 100%{
 transform:scale(2.4)}
+}
+
+
+
+.tester {
+ background-color: red;
+ border-radius: 7px;
+ opacity:.75;
 }
