@@ -1111,7 +1111,7 @@ _visible_image:function(show,callback)
 			this._image.style.visibility = 'hidden';			
 		}														
 		
-		//Обработчик анимации, в зависимости от требуемого дествия показать/скрыть
+		//Обработчик анимации, в зависимости от требуемого действия показать/скрыть
 		var fnTransitionEnd = show?transitionEnd_Show:transitionEnd_Hide,
 			tObj = { context:this,show:show,callback:callback,fn:fnTransitionEnd };
 		
@@ -1505,8 +1505,10 @@ _update:function(force)
 		if(typeof this.options.fn_custom=='function'){		
 			requestParams = this.options.fn_custom.call(this,requestParams);
 			//Если параметры пусты, то выходим
-			if(!requestParams)
+			if(!requestParams){				
+				this.options.loading(true);			
 				return;
+			}
 		}
 		
 		

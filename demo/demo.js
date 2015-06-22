@@ -322,7 +322,7 @@ map.search=function(){
 map.search('42:30:0302064:49,42:30:0302064:58',function(key,data){	
 });
 
-
+/*
 setTimeout(function(){		
 		map.search('парад',{clear:false});
 },4000);
@@ -332,7 +332,7 @@ setTimeout(function(){
 setTimeout(function(){		
 		map.search('42:30:0302064:43',{clear:true});
 },5000);
-
+*/
 
 //map.search('бракадабр',{clear:false});
 

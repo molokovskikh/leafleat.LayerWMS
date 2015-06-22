@@ -427,6 +427,7 @@
 		},
 		_moveend:function(){
 			this._moveend._busy=false;
+			if(this._map)
 			this._map.off('moveend',this._moveend,this);
 		},
 		_adjustPan:function(){
@@ -447,7 +448,7 @@
 					var tabHeader = $('.nav-tabs',content),
 						tabContent = $('.tab-content',content),
 						popup=this;
-					
+					debugger
 					if($('li',tabHeader).length==1)
 						tabHeader.hide();
 					
@@ -484,8 +485,10 @@
 			this._adjustPan();			
 		},		
 		_calc_optimalWidth:function(){
-			var 
-			s =$('.scroll-container'),
+			var s =$('.scroll-container',this._container);
+			if(s.length==0)
+				return;
+			var 			
 			el=s.get(0),
 			offsetWidth=el.offsetWidth,
 			clientWidth=el.clientWidth,
@@ -576,6 +579,8 @@
 		},
 		onRemove:function(map){			
 			map.off('resize',this._resize,this);
+			map.off('moveend',this._moveend,this);
+			this._moveend._busy=false;
 			return L.Popup.prototype.onRemove.apply(this,arguments);
 		}	
 				
@@ -668,7 +673,9 @@
                
 				var obj = this._getObjectFromCache(e.text);
 				if(obj&&this._ptype in obj) {
-					if(obj[this._ptype]==SourceTypes.Rosreestr){		
+					if(obj[this._ptype]==SourceTypes.Rosreestr){
+						
+					
 						map.fire('searchcomplete',{
 							mapObjects: [
 											{
@@ -677,7 +684,8 @@
 												attributesJSON: obj._getJSON?obj._getJSON():null
 											}
 										]				
-						});					
+						});		
+								
 					}
 				}
 			});
@@ -723,7 +731,7 @@
 		},
 		
 		isExpand:function(){
-			return L.DomUtils.hasClass(this._container,'search-exp');
+			return L.DomUtil.hasClass(this._container,'search-exp');
 		},
 		
 		_buildProxyFn:function(name){
@@ -1739,8 +1747,7 @@
 							*/
 							//Обработка клика по маркеру
 							marker.on('click',function(e){
-								this.closePopup();								
-								this.setPopupContent(self._buildContentPopup(this.options.data));
+								this.setPopupContent(self._buildContentPopup(this.options.data));								
 							})
 							//Привязка к балуну
 							marker.bindPopup(self._popup);
@@ -1762,7 +1769,6 @@
 						if(options&&options.fromHistory)
 							$.extend(eventDataSearchComplete,{ isHistory:true });						
 					} 					
-					
 					self._map.fire('searchcomplete',eventDataSearchComplete);
 					
 			}
@@ -1834,7 +1840,7 @@
 							
 							self._historySearch.push(data);
 							if(self._map&&self._map.expandControl){
-								debugger
+								//debugger
 								self._map.expandControl.visible(true);
 							}
 							data._searchText = strCadNums;
@@ -1883,9 +1889,7 @@
         if (this.options.Rosreestr) {
             this.rosreestrControl = L.control.rosreestr(this.options.Rosreestr);
             this.addControl(this.rosreestrControl);
-        }
-		
-		
+        }		
     });
 
 	
