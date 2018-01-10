@@ -115,7 +115,7 @@ var
 			
 			
 
-var rosreestrLayer = new L.wmsLayer('http://c.maps.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?',
+var rosreestrLayer = new L.wmsLayer('http://pkk5.rosreestr.ru/arcgis/rest/services/Cadastre/Cadastre/MapServer/export?',
 {
 	loading:loading,
 	fn_custom:

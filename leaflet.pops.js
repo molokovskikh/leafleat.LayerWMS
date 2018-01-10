@@ -183,11 +183,13 @@ nsTile.Google = nsTile.extend({
 nsTile.Kosmosnimki = nsTile.extend({
    statics:{ create :function (url,options) {return new nsTile.Kosmosnimki(url,options);}},  
    initialize: function(url,options){
-	   	var sd = {crs:L.CRS.EPSG3395},
+	   	var sd = {crs:L.CRS.EPSG3857},// EPSG3395, EPSG3857, EPSG4326
 			defaultOptions = (options&&L.Util.extend({},sd,options))||sd,
 			defaultLayer= defaultOptions.layerName||defaultOptions.layer||'04C9E7CE82C34172910ACDBF8F1DF49A';
 			//'&apikey=7BDJ6RRTHH'
-		return nsTile.prototype.initialize.call(this,url||'http://maps.kosmosnimki.ru/TileService.ashx?Request=GetTile&layerName='+defaultLayer+'&crs='+defaultOptions.crs.code+'&x={x}&y={y}&z={z}',defaultOptions);
+		//return nsTile.prototype.initialize.call(this,url||'http://maps.kosmosnimki.ru/TileService.ashx?Request=GetTile&layerName='+defaultLayer+'&apikey=7BDJ6RRTHH&crs='+defaultOptions.crs.code+'&x={x}&y={y}&z={z}',defaultOptions);
+		//return nsTile.prototype.initialize.call(this,url||'http://maps.kosmosnimki.ru/TileSender.ashx?ModeKey=tile&z={z}&x={x}&y={y}&LayerName=C9458F2DCB754CEEACC54216C7D1EB0A&key=1QrppJY%2BAj5hdMtVagyXJtsQA2%2B35onyY1wvGI1y3Wr%2B0dZMsKQqW%2Fw2ucFzfFLWQ3S9v0gOvYkGw71EIGAz45WoyjzykYRhkW4qRRNXajA%3D',options);		
+		return nsTile.prototype.initialize.call(this,url||'http://1.aerial.maps.api.here.com/maptile/2.1/maptile/newest/hybrid.day/{z}/{x}/{y}/256/png8?app_id=H0fSY1TZ9EpLJdBl6fo2&app_code=RYKAW1WGH87iZ-dYF5XAAQ&lg=rus',defaultOptions);
     }
 })
 
